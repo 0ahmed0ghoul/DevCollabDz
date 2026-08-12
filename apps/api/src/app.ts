@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import authRoutes from "./modules/auth/auth.routes.js";
+import usersRoutes from "./modules/users/users.routes.js";
 
 const app = express();
 
@@ -12,5 +14,8 @@ app.get("/api/health", (_req, res) => {
     service: "devcollab-api",
   });
 });
+
+app.use("/api/auth", authRoutes);
+app.use("/api/users", usersRoutes);
 
 export default app;
