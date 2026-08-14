@@ -8,8 +8,8 @@ import {
   create,
   get,
   getMembers,
+  updateMemberRole,
 } from "./organization.controller.js";
-import { updateMemberRole } from "./organization.service.js";
 
 const router = Router();
 

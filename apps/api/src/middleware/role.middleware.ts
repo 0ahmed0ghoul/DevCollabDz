@@ -24,7 +24,8 @@ export function requireRole(
         });
       }
 
-      const { organizationId } = req.params;
+      const organizationId =
+      req.params.organizationId as string;
 
       if (!organizationId) {
         return res.status(400).json({

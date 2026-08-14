@@ -8,12 +8,12 @@ export const createOrganizationSchema = z.object({
     .max(100, "Organization name must be at most 100 characters"),
 });
 export const updateMemberRoleSchema = z.object({
-    role: z.enum(["ADMIN", "MEMBER"]),
-  });
-  
-  export type UpdateMemberRoleInput = z.infer<
-    typeof updateMemberRoleSchema
-  >;
+  role: z.enum(["ADMIN", "MEMBER"]),
+});
+
+export type UpdateMemberRoleInput = z.infer<
+  typeof updateMemberRoleSchema
+>;
   
 export const addMemberSchema = z.object({
   userId: z.string().min(1, "User ID is required"),

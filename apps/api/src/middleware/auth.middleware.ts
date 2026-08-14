@@ -7,6 +7,8 @@ if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined");
 }
 
+const jwtSecret: string = JWT_SECRET;
+
 interface JwtPayload {
   userId: string;
 }
@@ -33,8 +35,9 @@ export function authenticate(
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
-
+    const payload =
+    jwt.verify(token, jwtSecret) as unknown as JwtPayload;
+    
     if (!payload.userId) {
       return res.status(401).json({
         message: "Invalid token",

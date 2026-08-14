@@ -74,3 +74,21 @@ RBAC
 □ Change member roles
 □ Prevent arbitrary OWNER creation
 □ Protect unauthorized organizations
+
+DevCollab — Day 5
+✅ Added TypeScript strict checking with npx tsc --noEmit
+✅ Fixed JWT/Express TypeScript errors
+✅ Fixed route parameter typing
+✅ Completed organization role management
+OWNER can change roles
+Supports ADMIN / MEMBER
+OWNER cannot be demoted
+✅ Completed Task Management foundation
+Task schema
+Controllers
+Services
+Validation
+Project ↔ Task relationships
+Task assignees
+✅ Improved authentication + organization authorization
+✅ Verified backend compiles with 0 TypeScript errors

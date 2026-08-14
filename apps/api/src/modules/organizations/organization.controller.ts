@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import {
   addMemberSchema,
   createOrganizationSchema,
+  updateMemberRoleSchema,
 } from "./organization.schema.js";
 
 import {
@@ -10,6 +11,7 @@ import {
   createOrganization,
   getOrganization,
   getOrganizationMembers,
+  updateMemberRole as updateMemberRoleService,
 } from "./organization.service.js";
 
 export async function create(req: Request, res: Response) {
@@ -46,8 +48,8 @@ export async function create(req: Request, res: Response) {
 
 export async function addOrganizationMember(req: Request, res: Response) {
   try {
-    const { organizationId } = req.params;
-
+    const organizationId =
+    req.params.organizationId as string;
     const result = addMemberSchema.safeParse(req.body);
 
     if (!result.success) {
@@ -101,7 +103,8 @@ export async function get(req: Request, res: Response) {
       });
     }
 
-    const { organizationId } = req.params;
+    const organizationId =
+  req.params.organizationId as string;
 
     const organization = await getOrganization(
       organizationId,
@@ -146,7 +149,8 @@ export async function getMembers(
       });
     }
 
-    const { organizationId } = req.params;
+    const organizationId =
+  req.params.organizationId as string;
 
     const members = await getOrganizationMembers(
       organizationId,
@@ -164,6 +168,69 @@ export async function getMembers(
       error.message === "You are not a member of this organization"
     ) {
       return res.status(403).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+}
+
+export async function updateMemberRole(
+  req: Request,
+  res: Response
+) {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        message: "Authentication required",
+      });
+    }
+
+    const organizationId =
+      req.params.organizationId as string;
+
+    const memberId =
+      req.params.memberId as string;
+
+      const result = updateMemberRoleSchema.safeParse(req.body);      
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: result.error.flatten().fieldErrors,
+      });
+    }
+
+    const member = await updateMemberRoleService(
+      organizationId,
+      memberId,
+      result.data
+    );
+
+    return res.status(200).json({
+      message: "Member role updated successfully",
+      member,
+    });
+  } catch (error) {
+    console.error("Update member role error:", error);
+
+    if (
+      error instanceof Error &&
+      error.message === "Member not found"
+    ) {
+      return res.status(404).json({
+        message: error.message,
+      });
+    }
+
+    if (
+      error instanceof Error &&
+      error.message ===
+        "The organization owner cannot be demoted"
+    ) {
+      return res.status(400).json({
         message: error.message,
       });
     }

@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined");
 }
-
+const jwtSecret: string = JWT_SECRET;
 export async function registerUser(input: RegisterInput) {
   const existingUser = await prisma.user.findUnique({
     where: {
@@ -63,7 +63,7 @@ export async function loginUser(input: LoginInput) {
     {
       userId: user.id,
     },
-    JWT_SECRET,
+    jwtSecret,
     {
       expiresIn: "7d",
     }

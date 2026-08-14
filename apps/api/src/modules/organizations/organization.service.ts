@@ -182,31 +182,30 @@ export async function getOrganizationMembers(
 }
 
 export async function updateMemberRole(
-    organizationId: string,
-    memberId: string,
-    input: UpdateMemberRoleInput
-  ) {
-    const member =
-      await prisma.organizationMember.findUnique({
-        where: {
-          id: memberId,
-        },
-      });
-  
-    if (!member || member.organizationId !== organizationId) {
-      throw new Error("Member not found");
-    }
-  
-    if (member.role === "OWNER") {
-      throw new Error("The organization owner cannot be demoted");
-    }
-  
-    return prisma.organizationMember.update({
-      where: {
-        id: memberId,
-      },
-      data: {
-        role: input.role,
-      },
-    });
+  organizationId: string,
+  memberId: string,
+  input: UpdateMemberRoleInput
+) {
+  const member = await prisma.organizationMember.findUnique({
+    where: {
+      id: memberId,
+    },
+  });
+
+  if (!member || member.organizationId !== organizationId) {
+    throw new Error("Member not found");
   }
+
+  if (member.role === "OWNER") {
+    throw new Error("The organization owner cannot be demoted");
+  }
+
+  return prisma.organizationMember.update({
+    where: {
+      id: memberId,
+    },
+    data: {
+      role: input.role,
+    },
+  });
+}

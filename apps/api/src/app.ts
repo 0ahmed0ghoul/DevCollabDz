@@ -4,6 +4,7 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import usersRoutes from "./modules/users/users.routes.js";
 import organizationRoutes from "./modules/organizations/organization.routes.js";
 import projectRoutes from "./modules/projects/project.router.js";
+import taskRoutes from "./modules/tasks/task.routes.js";
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.get("/api/health", (_req, res) => {
   });
 });
 app.use("/api", projectRoutes);
+app.use("/api", taskRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/organizations",organizationRoutes);

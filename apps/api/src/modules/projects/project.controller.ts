@@ -12,7 +12,8 @@ export async function create(req: Request, res: Response) {
       });
     }
 
-    const { organizationId } = req.params;
+    const organizationId =
+  req.params.organizationId as string;
 
     const result = createProjectSchema.safeParse(req.body);
 
@@ -59,7 +60,7 @@ export async function getAll(req: Request, res: Response) {
       });
     }
 
-    const { organizationId } = req.params;
+    const { organizationId } = req.params as { organizationId: string };
 
     const projects = await getProjects(organizationId, req.userId);
 
@@ -92,7 +93,8 @@ export async function getOne(req: Request, res: Response) {
       });
     }
 
-    const { projectId } = req.params;
+    const projectId =
+  req.params.projectId as string;
 
     const project = await getProject(projectId, req.userId);
 
