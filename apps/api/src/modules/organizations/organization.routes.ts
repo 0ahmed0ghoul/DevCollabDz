@@ -9,6 +9,7 @@ import {
   get,
   getMembers,
   updateMemberRole,
+  getMyOrganizations
 } from "./organization.controller.js";
 
 const router = Router();
@@ -16,6 +17,8 @@ const router = Router();
 router.use(authenticate);
 
 router.post("/", create);
+
+router.get("/", getMyOrganizations);
 
 router.get("/:organizationId", get);
 

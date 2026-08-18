@@ -12,6 +12,7 @@ import {
   getOrganization,
   getOrganizationMembers,
   updateMemberRole as updateMemberRoleService,
+  getUserOrganizations,
 } from "./organization.service.js";
 
 export async function create(req: Request, res: Response) {
@@ -234,6 +235,31 @@ export async function updateMemberRole(
         message: error.message,
       });
     }
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+}
+
+export async function getMyOrganizations(
+  req: Request,
+  res: Response
+) {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        message: "Authentication required",
+      });
+    }
+
+    const organizations = await getUserOrganizations(req.userId);
+
+    return res.status(200).json({
+      organizations,
+    });
+  } catch (error) {
+    console.error("Get user organizations error:", error);
 
     return res.status(500).json({
       message: "Internal server error",

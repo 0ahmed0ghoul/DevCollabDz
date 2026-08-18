@@ -131,7 +131,10 @@ export async function getOrganization(organizationId: string, userId: string) {
       members: {
         select: {
           id: true,
+          userId: true,
+          organizationId: true,
           role: true,
+          createdAt: true,
           user: {
             select: {
               id: true,
@@ -168,6 +171,8 @@ export async function getOrganizationMembers(
     },
     select: {
       id: true,
+      userId: true,
+      organizationId: true,
       role: true,
       createdAt: true,
       user: {
@@ -209,3 +214,18 @@ export async function updateMemberRole(
     },
   });
 }
+export async function getUserOrganizations(userId: string) {
+  return prisma.organization.findMany({
+    where: {
+      members: {
+        some: {
+          userId,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+}
+

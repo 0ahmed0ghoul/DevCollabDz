@@ -5,7 +5,8 @@ import usersRoutes from "./modules/users/users.routes.js";
 import organizationRoutes from "./modules/organizations/organization.routes.js";
 import projectRoutes from "./modules/projects/project.router.js";
 import taskRoutes from "./modules/tasks/task.routes.js";
-
+import { errorMiddleware } from "./middleware/error.middleware.js";
+import { notFoundMiddleware } from "./middleware/not-found.middleware.js";
 const app = express();
 
 app.use(cors());
@@ -23,5 +24,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/organizations",organizationRoutes);
 
+// 404 handler — must come after all routes
+app.use(notFoundMiddleware);
 
+// Global error handler — must be last
+app.use(errorMiddleware);
 export default app;
