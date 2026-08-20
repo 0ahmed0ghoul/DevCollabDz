@@ -1,5 +1,75 @@
 ├── apps/
-│   ├
+│   ├── api/
+│   │   ├── prisma/
+│   │   │   ├── migrations/
+│   │   │   │   ├── 20260810123242_init/
+│   │   │   │   │   └── migration.sql (2.8 KB)
+│   │   │   │   └── migration_lock.toml (0.1 KB)
+│   │   │   └── schema.prisma (1.9 KB)
+│   │   ├── src/
+│   │   │   ├── config/
+│   │   │   │   └── constants.ts (0.1 KB)
+│   │   │   ├── database/
+│   │   │   │   ├── prisma.ts (0.4 KB)
+│   │   │   │   └── test-connection.ts (0.3 KB)
+│   │   │   ├── generated/
+│   │   │   │   └── prisma/
+│   │   │   │       ├── internal/
+│   │   │   │       │   ├── class.ts (30.8 KB)
+│   │   │   │       │   ├── prismaNamespace.ts (35.9 KB)
+│   │   │   │       │   └── prismaNamespaceBrowser.ts (4.4 KB)
+│   │   │   │       ├── models/
+│   │   │   │       │   ├── Organization.ts (51.8 KB)
+│   │   │   │       │   ├── OrganizationMember.ts (61.9 KB)
+│   │   │   │       │   ├── Project.ts (64.3 KB)
+│   │   │   │       │   ├── Task.ts (59.4 KB)
+│   │   │   │       │   └── User.ts (55.5 KB)
+│   │   │   │       ├── browser.ts (1.0 KB)
+│   │   │   │       ├── client.ts (2.0 KB)
+│   │   │   │       ├── commonInputTypes.ts (11.0 KB)
+│   │   │   │       ├── enums.ts (0.3 KB)
+│   │   │   │       └── models.ts (0.5 KB)
+│   │   │   ├── middleware/
+│   │   │   │   ├── auth.middleware.ts (1.1 KB)
+│   │   │   │   ├── error.middleware.ts (0.4 KB)
+│   │   │   │   ├── not-found.middleware.ts (0.2 KB)
+│   │   │   │   └── role.middleware.ts (1.7 KB)
+│   │   │   ├── modules/
+│   │   │   │   ├── auth/
+│   │   │   │   │   ├── auth.controller.ts (1.8 KB)
+│   │   │   │   │   ├── auth.routes.ts (0.2 KB)
+│   │   │   │   │   ├── auth.schema.ts (0.8 KB)
+│   │   │   │   │   ├── auth.service.ts (1.6 KB)
+│   │   │   │   │   └── auth.types.ts (0.0 KB)
+│   │   │   │   ├── organizations/
+│   │   │   │   │   ├── organization.controller.ts (6.0 KB)
+│   │   │   │   │   ├── organization.routes.ts (0.7 KB)
+│   │   │   │   │   ├── organization.schema.ts (0.7 KB)
+│   │   │   │   │   └── organization.service.ts (4.6 KB)
+│   │   │   │   ├── projects/
+│   │   │   │   │   ├── project.controller.ts (2.9 KB)
+│   │   │   │   │   ├── project.router.ts (0.5 KB)
+│   │   │   │   │   ├── project.schema.ts (0.4 KB)
+│   │   │   │   │   └── project.service.ts (2.1 KB)
+│   │   │   │   ├── tasks/
+│   │   │   │   │   ├── task.controller.ts (5.7 KB)
+│   │   │   │   │   ├── task.routes.ts (0.6 KB)
+│   │   │   │   │   ├── task.schema.ts (0.9 KB)
+│   │   │   │   │   └── task.service.ts (5.2 KB)
+│   │   │   │   └── users/
+│   │   │   │       ├── users.controller.ts (0.2 KB)
+│   │   │   │       └── users.routes.ts (0.3 KB)
+│   │   │   ├── types/
+│   │   │   │   └── express.d.ts (0.1 KB)
+│   │   │   ├── utils/
+│   │   │   │   └── response.ts (0.4 KB)
+│   │   │   ├── app.ts (1.1 KB)
+│   │   │   └── server.ts (0.2 KB)
+│   │   ├── package-lock.json (134.4 KB)
+│   │   ├── package.json (0.8 KB)
+│   │   ├── prisma.config.ts (0.4 KB)
+│   │   ├── skills-lock.json (2.1 KB)
+│   │   └── tsconfig.json (0.3 KB)
 │   └── web/
 │       ├── public/
 │       │   ├── favicon.ico (19.9 KB)
@@ -35,7 +105,7 @@
 │       │   │   │   ├── SearchDialog.tsx (4.4 KB)
 │       │   │   │   └── Topbar.tsx (3.3 KB)
 │       │   │   ├── projects/
-│       │   │   │   ├── CreateProjectDialog.tsx (5.9 KB)
+│       │   │   │   ├── CreateProjectDialog.tsx (8.2 KB)
 │       │   │   │   └── ProjectCard.tsx (2.9 KB)
 │       │   │   └── ui/
 │       │   │       ├── accordion.tsx (2.0 KB)
@@ -90,25 +160,25 @@
 │       │   │   └── use-mobile.tsx (0.6 KB)
 │       │   ├── lib/
 │       │   │   ├── api/
-│       │   │   │   ├── auth.api.ts (1.3 KB)
-│       │   │   │   ├── client.ts (1.4 KB)
-│       │   │   │   ├── organizations.api.ts (1.9 KB)
-│       │   │   │   ├── projects.api.ts (0.9 KB)
-│       │   │   │   └── tasks.api.ts (1.9 KB)
-│       │   │   ├── auth.ts (0.2 KB)
+│       │   │   │   ├── auth.api.ts (1.9 KB)
+│       │   │   │   ├── client.ts (1.5 KB)
+│       │   │   │   ├── organizations.api.ts (2.2 KB)
+│       │   │   │   ├── projects.api.ts (1.0 KB)
+│       │   │   │   └── tasks.api.ts (1.7 KB)
+│       │   │   ├── auth.ts (0.3 KB)
 │       │   │   ├── error-capture.ts (2.9 KB)
 │       │   │   ├── error-page.ts (1.4 KB)
 │       │   │   ├── format.ts (1.2 KB)
 │       │   │   ├── kanban.ts (0.3 KB)
 │       │   │   ├── lovable-error-reporting.ts (1.8 KB)
 │       │   │   ├── utils.ts (0.2 KB)
-│       │   │   └── workspace-store.tsx (4.8 KB)
+│       │   │   └── workspace-store.tsx (10.5 KB)
 │       │   ├── routes/
 │       │   │   ├── __root.tsx (4.6 KB)
-│       │   │   ├── dashboard.tsx (4.3 KB)
+│       │   │   ├── dashboard.tsx (4.4 KB)
 │       │   │   ├── index.tsx (1.1 KB)
 │       │   │   ├── issues.tsx (2.2 KB)
-│       │   │   ├── login.tsx (5.3 KB)
+│       │   │   ├── login.tsx (5.6 KB)
 │       │   │   ├── my-tasks.tsx (5.0 KB)
 │       │   │   ├── projects.$projectId.activity.tsx (1.1 KB)
 │       │   │   ├── projects.$projectId.board.tsx (0.3 KB)
@@ -145,7 +215,8 @@
 ├── docs/
 │   ├── architecture/
 │   │   └── initial-architecture.md (0.4 KB)
-│   └── product.md (2.8 KB)
+│   └── product.md (4.6 KB)
 ├── packages/
 ├── docker-compose.yml (0.4 KB)
-└── package.json (0.5 KB)
+├── package.json (0.5 KB)
+└── project-structure.txt (7.8 KB)

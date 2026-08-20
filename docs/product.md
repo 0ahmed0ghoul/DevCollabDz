@@ -123,3 +123,54 @@ We've already completed:
      Kanban UI                  Projects
      Dashboard                  Tasks
      Responsive UI
+
+     Day 7 — What we did so far
+🔐 Connected frontend authentication to the real backend
+Login now stores the JWT accessToken.
+Stored authenticated user in localStorage.
+Added isAuthenticated() and requireAuth().
+Protected routes such as /dashboard.
+🌐 Created frontend API client
+Centralized GET, POST, PATCH, and DELETE requests.
+
+Automatically sends:
+
+Authorization: Bearer <token>
+Handles API errors consistently.
+🏢 Connected Organizations API
+Get current user's organizations.
+Get organization details.
+Get organization members.
+Create organizations.
+Add members.
+Update member roles.
+Implemented OWNER / ADMIN / MEMBER roles.
+🛡️ Implemented backend authorization
+JWT authentication middleware.
+Organization membership verification.
+Role-based authorization middleware.
+OWNER protection for role changes.
+Prevented organization owners from being demoted.
+📁 Connected Projects API
+Create projects.
+Get organization projects.
+Get individual projects.
+Projects verify organization membership before access.
+🔄 Migrated WorkspaceProvider from mock users/organizations/projects to API data
+Authenticated user comes from the real backend.
+Organizations come from PostgreSQL.
+Organization members come from PostgreSQL.
+Projects come from PostgreSQL.
+Added loading/error states.
+Added refreshWorkspace().
+🧩 Kept the migration incremental
+Tasks, comments, activities and notifications are still mocked for now.
+This avoids changing the entire application at once.
+🐛 Fixed TypeScript issues
+Fixed nullable currentUser handling.
+Removed incorrect authenticatedUser usage.
+npx tsc --noEmit now passes with 0 errors.
+🧪 Verified backend endpoints
+Authentication test → 200 OK
+Organization endpoints → 200 OK
+Project endpoints → 200 OK
