@@ -9,6 +9,8 @@ import {
 } from "./auth.service.js";
 
 export async function register(req: Request, res: Response) {
+  console.log(">>> REGISTER CONTROLLER HIT");
+
   try {
     const result = registerSchema.safeParse(req.body);
 
@@ -44,6 +46,8 @@ export async function register(req: Request, res: Response) {
 }
 
 export async function login(req: Request, res: Response) {
+  console.log(">>> LOGIN CONTROLLER HIT");
+
   try {
     const result = loginSchema.safeParse(req.body);
 

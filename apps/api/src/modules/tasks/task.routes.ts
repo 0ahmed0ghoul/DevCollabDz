@@ -12,30 +12,29 @@ import {
 
 const router = Router();
 
-router.use(authenticate);
 
 router.post(
-  "/projects/:projectId/tasks",
+  "/projects/:projectId/tasks",authenticate,
   create
 );
 
 router.get(
-  "/projects/:projectId/tasks",
+  "/projects/:projectId/tasks",authenticate,
   getAll
 );
 
 router.get(
-  "/tasks/:taskId",
+  "/tasks/:taskId",authenticate,
   getOne
 );
 
 router.patch(
-  "/tasks/:taskId",
+  "/tasks/:taskId",authenticate,
   update
 );
 
 router.delete(
-  "/tasks/:taskId",
+  "/tasks/:taskId",authenticate,
   remove
 );
 

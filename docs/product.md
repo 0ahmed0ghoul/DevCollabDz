@@ -174,3 +174,22 @@ npx tsc --noEmit now passes with 0 errors.
 Authentication test → 200 OK
 Organization endpoints → 200 OK
 Project endpoints → 200 OK
+
+
+Day 6 — Authentication & Frontend Integration
+Added a proper authenticated route boundary using TanStack Router.
+Separated public routes (/, /login, /register) from protected workspace routes.
+Moved WorkspaceProvider out of the global root and into _authenticated.
+Added centralized authentication checks and redirects to /login.
+Refactored WorkspaceProvider to safely handle nullable authentication state.
+Connected registration UI to the real /api/auth/register endpoint.
+Connected login UI to the real /api/auth/login endpoint.
+Added JWT/session persistence using localStorage.
+Centralized JWT handling in the frontend API client.
+Added centralized 401 session handling and logout/redirect behavior.
+Migrated organizations, members, and projects from mock data to the real backend API.
+Connected project creation to POST /api/organizations/:organizationId/projects.
+Fixed a middleware architecture bug where the global task router authentication intercepted /auth/login and /auth/register.
+Changed task authentication to apply only to actual task endpoints.
+Verified login and registration work end-to-end and successful login redirects to /dashboard.
+npx tsc --noEmit passes with 0 errors.
