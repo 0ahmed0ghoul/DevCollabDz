@@ -1,14 +1,8 @@
 import { prisma } from "../../database/prisma.js";
 
-import type {
-  CreateTaskInput,
-  UpdateTaskInput,
-} from "./task.schema.js";
+import type { CreateTaskInput, UpdateTaskInput } from "./task.schema.js";
 
-async function getProjectMembership(
-  projectId: string,
-  userId: string
-) {
+async function getProjectMembership(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: {
       id: projectId,
@@ -23,20 +17,17 @@ async function getProjectMembership(
     throw new Error("Project not found");
   }
 
-  const membership =
-    await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId: project.organizationId,
-        },
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId: project.organizationId,
       },
+    },
   });
 
   if (!membership) {
-    throw new Error(
-      "You are not a member of this organization"
-    );
+    throw new Error("You are not a member of this organization");
   }
 
   return project;
@@ -46,26 +37,20 @@ export async function createTask(
   userId: string,
   input: CreateTaskInput
 ) {
-  const project = await getProjectMembership(
-    projectId,
-    userId
-  );
+  const project = await getProjectMembership(projectId, userId);
 
   if (input.assigneeId) {
-    const assignee =
-      await prisma.organizationMember.findUnique({
-        where: {
-          userId_organizationId: {
-            userId: input.assigneeId,
-            organizationId: project.organizationId,
-          },
+    const assignee = await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId: input.assigneeId,
+          organizationId: project.organizationId,
         },
-      });
+      },
+    });
 
     if (!assignee) {
-      throw new Error(
-        "Assignee is not a member of this organization"
-      );
+      throw new Error("Assignee is not a member of this organization");
     }
   }
 
@@ -73,6 +58,7 @@ export async function createTask(
     data: {
       title: input.title,
       description: input.description,
+      status: input.status ?? "TODO",
       priority: input.priority ?? "MEDIUM",
 
       project: {
@@ -95,14 +81,8 @@ export async function createTask(
 
   return task;
 }
-export async function getTasks(
-  projectId: string,
-  userId: string
-) {
-  await getProjectMembership(
-    projectId,
-    userId
-  );
+export async function getTasks(projectId: string, userId: string) {
+  await getProjectMembership(projectId, userId);
 
   return prisma.task.findMany({
     where: {
@@ -122,10 +102,7 @@ export async function getTasks(
     },
   });
 }
-export async function getTask(
-  taskId: string,
-  userId: string
-) {
+export async function getTask(taskId: string, userId: string) {
   const task = await prisma.task.findUnique({
     where: {
       id: taskId,
@@ -153,21 +130,17 @@ export async function getTask(
     throw new Error("Task not found");
   }
 
-  const membership =
-    await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId:
-            task.project.organizationId,
-        },
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId: task.project.organizationId,
       },
-    });
+    },
+  });
 
   if (!membership) {
-    throw new Error(
-      "You are not a member of this organization"
-    );
+    throw new Error("You are not a member of this organization");
   }
 
   return task;
@@ -194,39 +167,31 @@ export async function updateTask(
     throw new Error("Task not found");
   }
 
-  const membership =
-    await prisma.organizationMember.findUnique({
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId: task.project.organizationId,
+      },
+    },
+  });
+
+  if (!membership) {
+    throw new Error("You are not a member of this organization");
+  }
+
+  if (input.assigneeId) {
+    const assignee = await prisma.organizationMember.findUnique({
       where: {
         userId_organizationId: {
-          userId,
-          organizationId:
-            task.project.organizationId,
+          userId: input.assigneeId,
+          organizationId: task.project.organizationId,
         },
       },
     });
 
-  if (!membership) {
-    throw new Error(
-      "You are not a member of this organization"
-    );
-  }
-
-  if (input.assigneeId) {
-    const assignee =
-      await prisma.organizationMember.findUnique({
-        where: {
-          userId_organizationId: {
-            userId: input.assigneeId,
-            organizationId:
-              task.project.organizationId,
-          },
-        },
-      });
-
     if (!assignee) {
-      throw new Error(
-        "Assignee is not a member of this organization"
-      );
+      throw new Error("Assignee is not a member of this organization");
     }
   }
 
@@ -238,10 +203,7 @@ export async function updateTask(
   });
 }
 
-export async function deleteTask(
-  taskId: string,
-  userId: string
-) {
+export async function deleteTask(taskId: string, userId: string) {
   const task = await prisma.task.findUnique({
     where: {
       id: taskId,
@@ -259,21 +221,17 @@ export async function deleteTask(
     throw new Error("Task not found");
   }
 
-  const membership =
-    await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId:
-            task.project.organizationId,
-        },
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId: task.project.organizationId,
       },
-    });
+    },
+  });
 
   if (!membership) {
-    throw new Error(
-      "You are not a member of this organization"
-    );
+    throw new Error("You are not a member of this organization");
   }
 
   await prisma.task.delete({
