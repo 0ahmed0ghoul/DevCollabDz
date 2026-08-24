@@ -193,3 +193,25 @@ Fixed a middleware architecture bug where the global task router authentication 
 Changed task authentication to apply only to actual task endpoints.
 Verified login and registration work end-to-end and successful login redirects to /dashboard.
 npx tsc --noEmit passes with 0 errors.
+
+
+
+What we've completed in Day 7 so far
+
+Real task API integration.
+Real task loading per project.
+Real task creation through PostgreSQL.
+Five backend-supported workflow states:
+BACKLOG
+TODO
+IN_PROGRESS
+REVIEW
+DONE
+Explicit frontend ↔ backend status mapping.
+Real task status updates with PATCH.
+Optimistic Kanban updates.
+Rollback when an update fails.
+Per-project task loading/error states.
+Async task mutation architecture.
+TypeScript clean on both frontend and backend.
+Verified the Kanban persistence flow successfully.
