@@ -56,38 +56,61 @@ export const addMemberSchema = z.object({
   role: z.enum(["ADMIN", "MEMBER"]).default("MEMBER"),
 });
 
-export async function addMember(organizationId: string, input: AddMemberInput) {
-  const organization = await prisma.organization.findUnique({
-    where: {
-      id: organizationId,
-    },
-  });
+export async function addMember(
+  organizationId: string,
+  actorUserId: string,
+  input: AddMemberInput,
+) {
+  const actorMembership =
+    await getActorMembership(
+      organizationId,
+      actorUserId,
+    );
 
-  if (!organization) {
-    throw new Error("Organization not found");
+  if (
+    !canManageMembers(
+      actorMembership.role,
+    )
+  ) {
+    throw new Error(
+      "You do not have permission to manage members",
+    );
   }
 
-  const user = await prisma.user.findUnique({
-    where: {
-      id: input.userId,
-    },
-  });
+  if (
+    actorMembership.role === "ADMIN" &&
+    input.role === "ADMIN"
+  ) {
+    throw new Error(
+      "Admins cannot create other admins",
+    );
+  }
+
+  const user =
+    await prisma.user.findUnique({
+      where: {
+        id: input.userId,
+      },
+    });
 
   if (!user) {
     throw new Error("User not found");
   }
 
-  const existingMember = await prisma.organizationMember.findUnique({
-    where: {
-      userId_organizationId: {
-        userId: input.userId,
-        organizationId,
+  const existingMember =
+    await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId: input.userId,
+          organizationId,
+        },
       },
-    },
-  });
+    });
 
   if (existingMember) {
-    throw new Error("User is already a member");
+    throw new Error(
+      "User is already a member",
+    );
   }
 
   return prisma.organizationMember.create({
@@ -96,7 +119,6 @@ export async function addMember(organizationId: string, input: AddMemberInput) {
       userId: input.userId,
       role: input.role,
     },
-
     include: {
       user: {
         select: {
@@ -108,6 +130,7 @@ export async function addMember(organizationId: string, input: AddMemberInput) {
     },
   });
 }
+
 export async function getOrganization(organizationId: string, userId: string) {
   const membership = await prisma.organizationMember.findUnique({
     where: {
@@ -188,21 +211,67 @@ export async function getOrganizationMembers(
 
 export async function updateMemberRole(
   organizationId: string,
+  actorUserId: string,
   memberId: string,
-  input: UpdateMemberRoleInput
+  input: UpdateMemberRoleInput,
 ) {
-  const member = await prisma.organizationMember.findUnique({
-    where: {
-      id: memberId,
-    },
-  });
+  const actorMembership =
+    await getActorMembership(
+      organizationId,
+      actorUserId,
+    );
 
-  if (!member || member.organizationId !== organizationId) {
+  if (
+    !canManageMembers(
+      actorMembership.role,
+    )
+  ) {
+    throw new Error(
+      "You do not have permission to manage members",
+    );
+  }
+
+  const targetMember =
+    await prisma.organizationMember.findUnique({
+      where: {
+        id: memberId,
+      },
+    });
+
+  if (
+    !targetMember ||
+    targetMember.organizationId !==
+      organizationId
+  ) {
     throw new Error("Member not found");
   }
 
-  if (member.role === "OWNER") {
-    throw new Error("The organization owner cannot be demoted");
+  if (targetMember.role === "OWNER") {
+    throw new Error(
+      "The organization owner cannot be demoted",
+    );
+  }
+
+  /*
+   * ADMIN cannot modify another ADMIN.
+   * OWNER can manage both ADMIN and MEMBER.
+   */
+  if (
+    actorMembership.role === "ADMIN" &&
+    targetMember.role === "ADMIN"
+  ) {
+    throw new Error(
+      "Admins cannot manage other admins",
+    );
+  }
+
+  if (
+    actorMembership.role === "ADMIN" &&
+    input.role === "ADMIN"
+  ) {
+    throw new Error(
+      "Admins cannot promote members to admin",
+    );
   }
 
   return prisma.organizationMember.update({
@@ -212,8 +281,18 @@ export async function updateMemberRole(
     data: {
       role: input.role,
     },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
   });
 }
+
 export async function getUserOrganizations(userId: string) {
   return prisma.organization.findMany({
     where: {
@@ -229,3 +308,34 @@ export async function getUserOrganizations(userId: string) {
   });
 }
 
+async function getActorMembership(
+  organizationId: string,
+  actorUserId: string,
+) {
+  const membership =
+    await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId: actorUserId,
+          organizationId,
+        },
+      },
+    });
+
+  if (!membership) {
+    throw new Error(
+      "You are not a member of this organization",
+    );
+  }
+
+  return membership;
+}
+
+function canManageMembers(
+  role: string,
+) {
+  return (
+    role === "OWNER" ||
+    role === "ADMIN"
+  );
+}

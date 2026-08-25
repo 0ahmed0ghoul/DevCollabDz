@@ -59,6 +59,15 @@ export async function getProjects(organizationId: string, userId: string) {
     where: {
       organizationId,
     },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
     orderBy: {
       createdAt: "desc",
     },
