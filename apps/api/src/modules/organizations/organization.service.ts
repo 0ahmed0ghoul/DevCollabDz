@@ -4,6 +4,7 @@ import type {
   AddMemberInput,
   CreateOrganizationInput,
   UpdateMemberRoleInput,
+  UpdateOrganizationInput,
 } from "./organization.schema.js";
 
 export async function createOrganization(
@@ -41,20 +42,6 @@ export async function createOrganization(
 
   return organization;
 }
-
-export const createOrganizationSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, "Organization name must be at least 2 characters")
-    .max(100, "Organization name must be at most 100 characters"),
-});
-
-export const addMemberSchema = z.object({
-  userId: z.string().min(1, "User ID is required"),
-
-  role: z.enum(["ADMIN", "MEMBER"]).default("MEMBER"),
-});
 
 export async function addMember(
   organizationId: string,
@@ -289,6 +276,33 @@ export async function updateMemberRole(
           email: true,
         },
       },
+    },
+  });
+}
+
+export async function updateOrganization(
+  organizationId: string,
+  actorUserId: string,
+  input: UpdateOrganizationInput,
+) {
+  const actorMembership =
+    await getActorMembership(
+      organizationId,
+      actorUserId,
+    );
+
+  if (actorMembership.role !== "OWNER") {
+    throw new Error(
+      "Only the organization owner can update organization settings",
+    );
+  }
+
+  return prisma.organization.update({
+    where: {
+      id: organizationId,
+    },
+    data: {
+      name: input.name,
     },
   });
 }

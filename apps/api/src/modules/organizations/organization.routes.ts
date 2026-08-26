@@ -9,7 +9,8 @@ import {
   get,
   getMembers,
   updateMemberRole,
-  getMyOrganizations
+  getMyOrganizations,
+  update
 } from "./organization.controller.js";
 
 const router = Router();
@@ -27,5 +28,11 @@ router.post("/:organizationId/members",requireRole("OWNER", "ADMIN"),addOrganiza
 router.get("/:organizationId/members",getMembers);
 
 router.patch("/:organizationId/members/:memberId/role",requireRole("OWNER"),updateMemberRole);
+
+router.patch(
+  "/:organizationId",
+  requireRole("OWNER"),
+  update,
+);
 
 export default router;

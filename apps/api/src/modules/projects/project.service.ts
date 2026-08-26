@@ -1,5 +1,8 @@
 import { prisma } from "../../database/prisma.js";
-import type { CreateProjectInput } from "./project.schema.js";
+import type {
+  CreateProjectInput,
+  UpdateProjectInput,
+} from "./project.schema.js";
 
 export async function createProject(
   organizationId: string,
@@ -116,4 +119,130 @@ export async function getProject(
   }
 
   return project;
+}
+
+export async function updateProject(
+  projectId: string,
+  userId: string,
+  input: UpdateProjectInput,
+) {
+  const project =
+    await prisma.project.findUnique({
+      where: {
+        id: projectId,
+      },
+    });
+
+  if (!project) {
+    throw new Error(
+      "Project not found",
+    );
+  }
+
+  const membership =
+    await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId:
+            project.organizationId,
+        },
+      },
+    });
+
+  if (!membership) {
+    throw new Error(
+      "You are not a member of this organization",
+    );
+  }
+
+  const canManage =
+    project.ownerId === userId ||
+    membership.role === "OWNER";
+
+  if (!canManage) {
+    throw new Error(
+      "You do not have permission to modify this project",
+    );
+  }
+
+  return prisma.project.update({
+    where: {
+      id: projectId,
+    },
+    data: {
+      ...(input.name !== undefined
+        ? {
+            name: input.name,
+          }
+        : {}),
+
+      ...(input.description !== undefined
+        ? {
+            description:
+              input.description,
+          }
+        : {}),
+    },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+  });
+}
+
+export async function deleteProject(
+  projectId: string,
+  userId: string,
+) {
+  const project =
+    await prisma.project.findUnique({
+      where: {
+        id: projectId,
+      },
+    });
+
+  if (!project) {
+    throw new Error(
+      "Project not found",
+    );
+  }
+
+  const membership =
+    await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId:
+            project.organizationId,
+        },
+      },
+    });
+
+  if (!membership) {
+    throw new Error(
+      "You are not a member of this organization",
+    );
+  }
+
+  const canManage =
+    project.ownerId === userId ||
+    membership.role === "OWNER";
+
+  if (!canManage) {
+    throw new Error(
+      "You do not have permission to modify this project",
+    );
+  }
+
+  await prisma.project.delete({
+    where: {
+      id: projectId,
+    },
+  });
 }

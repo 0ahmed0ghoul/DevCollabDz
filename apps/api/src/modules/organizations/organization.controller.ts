@@ -4,6 +4,7 @@ import {
   addMemberSchema,
   createOrganizationSchema,
   updateMemberRoleSchema,
+  updateOrganizationSchema,
 } from "./organization.schema.js";
 
 import {
@@ -12,6 +13,7 @@ import {
   getOrganization,
   getOrganizationMembers,
   updateMemberRole as updateMemberRoleService,
+  updateOrganization as updateOrganizationService,
   getUserOrganizations,
 } from "./organization.service.js";
 
@@ -341,6 +343,80 @@ const member =
 
     return res.status(500).json({
       message: "Internal server error",
+    });
+  }
+}
+
+export async function update(
+  req: Request,
+  res: Response,
+) {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        message:
+          "Authentication required",
+      });
+    }
+
+    const organizationId =
+      req.params.organizationId as string;
+
+    const result =
+      updateOrganizationSchema.safeParse(
+        req.body,
+      );
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors:
+          result.error.flatten()
+            .fieldErrors,
+      });
+    }
+
+    const organization =
+      await updateOrganizationService(
+        organizationId,
+        req.userId,
+        result.data,
+      );
+
+    return res.status(200).json({
+      message:
+        "Organization updated successfully",
+      organization,
+    });
+  } catch (error) {
+    console.error(
+      "Update organization error:",
+      error,
+    );
+
+    if (
+      error instanceof Error &&
+      error.message ===
+        "You are not a member of this organization"
+    ) {
+      return res.status(403).json({
+        message: error.message,
+      });
+    }
+
+    if (
+      error instanceof Error &&
+      error.message ===
+        "Only the organization owner can update organization settings"
+    ) {
+      return res.status(403).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message:
+        "Internal server error",
     });
   }
 }
