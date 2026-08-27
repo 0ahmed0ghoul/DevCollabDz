@@ -1,60 +1,146 @@
 import { prisma } from "../../database/prisma.js";
 
-import type { CreateTaskInput, UpdateTaskInput } from "./task.schema.js";
+import type {
+  CreateTaskInput,
+  UpdateTaskInput,
+} from "./task.schema.js";
 
-async function getProjectMembership(projectId: string, userId: string) {
-  const project = await prisma.project.findUnique({
-    where: {
-      id: projectId,
-    },
-    select: {
-      id: true,
-      organizationId: true,
-    },
-  });
+import {
+  ForbiddenError,
+  NotFoundError,
+} from "../../errors/app-error.js";
 
-  if (!project) {
-    throw new Error("Project not found");
-  }
-
-  const membership = await prisma.organizationMember.findUnique({
-    where: {
-      userId_organizationId: {
-        userId,
-        organizationId: project.organizationId,
-      },
-    },
-  });
-
-  if (!membership) {
-    throw new Error("You are not a member of this organization");
-  }
-
-  return project;
-}
-export async function createTask(
+async function getProjectMembership(
   projectId: string,
   userId: string,
-  input: CreateTaskInput
 ) {
-  const project = await getProjectMembership(projectId, userId);
+  const project =
+    await prisma.project.findUnique({
+      where: {
+        id: projectId,
+      },
+      select: {
+        id: true,
+        organizationId: true,
+      },
+    });
 
-  if (input.assigneeId) {
-    const assignee = await prisma.organizationMember.findUnique({
+  if (!project) {
+    throw new NotFoundError(
+      "Project not found",
+    );
+  }
+
+  const membership =
+    await prisma.organizationMember.findUnique({
       where: {
         userId_organizationId: {
-          userId: input.assigneeId,
-          organizationId: project.organizationId,
+          userId,
+          organizationId:
+            project.organizationId,
         },
       },
     });
 
+  if (!membership) {
+    throw new ForbiddenError(
+      "You are not a member of this organization",
+    );
+  }
+
+  return {
+    project,
+    membership,
+  };
+}
+
+async function getTaskWithMembership(
+  taskId: string,
+  userId: string,
+) {
+  const task =
+    await prisma.task.findUnique({
+      where: {
+        id: taskId,
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            organizationId: true,
+            name: true,
+          },
+        },
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+  if (!task) {
+    throw new NotFoundError(
+      "Task not found",
+    );
+  }
+
+  const membership =
+    await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId:
+            task.project.organizationId,
+        },
+      },
+    });
+
+  if (!membership) {
+    throw new ForbiddenError(
+      "You are not a member of this organization",
+    );
+  }
+
+  return {
+    task,
+    membership,
+  };
+}
+
+export async function createTask(
+  projectId: string,
+  userId: string,
+  input: CreateTaskInput,
+) {
+  const { project } =
+    await getProjectMembership(
+      projectId,
+      userId,
+    );
+
+  if (input.assigneeId) {
+    const assignee =
+      await prisma.organizationMember.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: input.assigneeId,
+            organizationId:
+              project.organizationId,
+          },
+        },
+      });
+
     if (!assignee) {
-      throw new Error("Assignee is not a member of this organization");
+      throw new ForbiddenError(
+        "Assignee is not a member of this organization",
+      );
     }
   }
 
-  const task = await prisma.task.create({
+  return prisma.task.create({
     data: {
       title: input.title,
       description: input.description,
@@ -78,11 +164,16 @@ export async function createTask(
         : {}),
     },
   });
-
-  return task;
 }
-export async function getTasks(projectId: string, userId: string) {
-  await getProjectMembership(projectId, userId);
+
+export async function getTasks(
+  projectId: string,
+  userId: string,
+) {
+  await getProjectMembership(
+    projectId,
+    userId,
+  );
 
   return prisma.task.findMany({
     where: {
@@ -102,96 +193,50 @@ export async function getTasks(projectId: string, userId: string) {
     },
   });
 }
-export async function getTask(taskId: string, userId: string) {
-  const task = await prisma.task.findUnique({
-    where: {
-      id: taskId,
-    },
-    include: {
-      project: {
-        select: {
-          id: true,
-          organizationId: true,
-          name: true,
-        },
-      },
 
-      assignee: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
-  });
-
-  if (!task) {
-    throw new Error("Task not found");
-  }
-
-  const membership = await prisma.organizationMember.findUnique({
-    where: {
-      userId_organizationId: {
-        userId,
-        organizationId: task.project.organizationId,
-      },
-    },
-  });
-
-  if (!membership) {
-    throw new Error("You are not a member of this organization");
-  }
+export async function getTask(
+  taskId: string,
+  userId: string,
+) {
+  const { task } =
+    await getTaskWithMembership(
+      taskId,
+      userId,
+    );
 
   return task;
 }
+
 export async function updateTask(
   taskId: string,
   userId: string,
-  input: UpdateTaskInput
+  input: UpdateTaskInput,
 ) {
-  const task = await prisma.task.findUnique({
-    where: {
-      id: taskId,
-    },
-    include: {
-      project: {
-        select: {
-          organizationId: true,
+  const { task } =
+    await getTaskWithMembership(
+      taskId,
+      userId,
+    );
+
+  if (
+    input.assigneeId !== undefined &&
+    input.assigneeId !== null
+  ) {
+    const assignee =
+      await prisma.organizationMember.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: input.assigneeId,
+            organizationId:
+              task.project.organizationId,
+          },
         },
-      },
-    },
-  });
-
-  if (!task) {
-    throw new Error("Task not found");
-  }
-
-  const membership = await prisma.organizationMember.findUnique({
-    where: {
-      userId_organizationId: {
-        userId,
-        organizationId: task.project.organizationId,
-      },
-    },
-  });
-
-  if (!membership) {
-    throw new Error("You are not a member of this organization");
-  }
-
-  if (input.assigneeId) {
-    const assignee = await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId: input.assigneeId,
-          organizationId: task.project.organizationId,
-        },
-      },
-    });
+      });
 
     if (!assignee) {
-      throw new Error("Assignee is not a member of this organization");
+      throw new ForbiddenError(
+        "Assignee is not a member of this organization",
+      );
     }
   }
 
@@ -203,36 +248,14 @@ export async function updateTask(
   });
 }
 
-export async function deleteTask(taskId: string, userId: string) {
-  const task = await prisma.task.findUnique({
-    where: {
-      id: taskId,
-    },
-    include: {
-      project: {
-        select: {
-          organizationId: true,
-        },
-      },
-    },
-  });
-
-  if (!task) {
-    throw new Error("Task not found");
-  }
-
-  const membership = await prisma.organizationMember.findUnique({
-    where: {
-      userId_organizationId: {
-        userId,
-        organizationId: task.project.organizationId,
-      },
-    },
-  });
-
-  if (!membership) {
-    throw new Error("You are not a member of this organization");
-  }
+export async function deleteTask(
+  taskId: string,
+  userId: string,
+) {
+  await getTaskWithMembership(
+    taskId,
+    userId,
+  );
 
   await prisma.task.delete({
     where: {

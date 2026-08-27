@@ -9,6 +9,12 @@ import {
   remove,
   update,
 } from "./project.controller.js";
+import {
+  getMembers,
+  addMember,
+  updateMemberRole,
+  removeMember,
+} from "./project-member.controller.js";
 
 const router = Router();
 
@@ -40,6 +46,30 @@ router.get(
   "/projects/:projectId",
   authenticate,
   getOne
+);
+
+router.get(
+  "/projects/:projectId/members",
+  authenticate,
+  getMembers,
+);
+
+router.post(
+  "/projects/:projectId/members",
+  authenticate,
+  addMember,
+);
+
+router.patch(
+  "/projects/:projectId/members/:memberId/role",
+  authenticate,
+  updateMemberRole,
+);
+
+router.delete(
+  "/projects/:projectId/members/:memberId",
+  authenticate,
+  removeMember,
 );
 
 export default router;

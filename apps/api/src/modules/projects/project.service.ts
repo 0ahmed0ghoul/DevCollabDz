@@ -1,45 +1,69 @@
 import { prisma } from "../../database/prisma.js";
+import { ForbiddenError ,NotFoundError} from "../../errors/app-error.js";
 import type {
   CreateProjectInput,
   UpdateProjectInput,
 } from "./project.schema.js";
 
+import type { ProjectRole } from "../../generated/prisma/client.js";
+
 export async function createProject(
   organizationId: string,
   userId: string,
-  input: CreateProjectInput
+  input: CreateProjectInput,
 ) {
-  const membership = await prisma.organizationMember.findUnique({
-    where: {
-      userId_organizationId: {
-        userId,
-        organizationId,
+  const membership =
+    await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId,
+        },
       },
-    },
-  });
+    });
 
   if (!membership) {
-    throw new Error("You are not a member of this organization");
+    throw new ForbiddenError(
+      "You are not a member of this organization",
+    );
   }
 
-  const project = await prisma.project.create({
-    data: {
-      name: input.name,
-      description: input.description,
+  const project =
+    await prisma.$transaction(
+      async (tx) => {
+        const createdProject =
+          await tx.project.create({
+            data: {
+              name: input.name,
+              description:
+                input.description,
 
-      organization: {
-        connect: {
-          id: organizationId,
-        },
-      },
+              organization: {
+                connect: {
+                  id: organizationId,
+                },
+              },
 
-      owner: {
-        connect: {
-          id: userId,
-        },
+              owner: {
+                connect: {
+                  id: userId,
+                },
+              },
+            },
+          });
+
+        await tx.projectMember.create({
+          data: {
+            projectId:
+              createdProject.id,
+            userId,
+            role: "OWNER",
+          },
+        });
+
+        return createdProject;
       },
-    },
-  });
+    );
 
   return project;
 }
@@ -245,4 +269,67 @@ export async function deleteProject(
       id: projectId,
     },
   });
+}
+
+
+async function getProjectAccess(
+  projectId: string,
+  userId: string,
+) {
+  const project =
+    await prisma.project.findUnique({
+      where: {
+        id: projectId,
+      },
+      select: {
+        id: true,
+        organizationId: true,
+        ownerId: true,
+      },
+    });
+
+  if (!project) {
+    throw new NotFoundError(
+      "Project not found",
+    );
+  }
+
+  const organizationMembership =
+    await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId:
+            project.organizationId,
+        },
+      },
+    });
+
+  if (!organizationMembership) {
+    throw new ForbiddenError(
+      "You are not a member of this organization",
+    );
+  }
+
+  const projectMembership =
+    await prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId,
+        },
+      },
+    });
+
+  if (!projectMembership) {
+    throw new ForbiddenError(
+      "You are not a member of this project",
+    );
+  }
+
+  return {
+    project,
+    organizationMembership,
+    projectMembership,
+  };
 }

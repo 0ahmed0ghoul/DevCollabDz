@@ -235,3 +235,49 @@ Day 7 — Completed
 ✅ User-facing success/error toasts
 ✅ TypeScript clean on frontend and backend
 ✅ End-to-end CRUD testing passed
+Day 8 — Multi-Organization Workspace & Project Management
+Added persistent organization selection using localStorage, allowing the selected workspace to survive page refreshes.
+Implemented organization switching with automatic reloading of organization members and projects.
+Added real organization member management backed by the API.
+Implemented organization RBAC for OWNER, ADMIN, and MEMBER roles.
+Added member invitation/addition with permission-aware frontend UI and backend authorization.
+Added member role management with owner-only role changes and protection against demoting the organization owner.
+Reworked the Teams page to use real organization members, assigned tasks, and project ownership instead of the legacy project.memberIds field.
+Added real project details loading from the backend.
+Implemented full project CRUD for supported fields:
+Create projects
+View project details
+Update project name/description
+Delete projects
+Added backend authorization for project modification/deletion based on project ownership or organization ownership.
+Added Project Settings with editable project information and a destructive-action confirmation dialog.
+Added Organization Settings with organization renaming and workspace information.
+Added success/error toast notifications for workspace mutations.
+Connected project deletion to database cascade behavior so associated tasks are removed with the project.
+Refactored the large workspace-store into focused modules:
+workspace-context
+workspace-provider
+workspace-types
+workspace-mappers
+workspace-organizations
+workspace-projects
+workspace-tasks
+workspace-operations
+workspace-storage
+Separated backend API models from the existing frontend UI projection models.
+Fixed React Rules of Hooks issues in WorkspaceProvider.
+Fixed SSR hydration mismatch caused by client-only authentication state in the landing header.
+Verified the frontend and backend with npx tsc --noEmit with zero TypeScript errors.
+
+Day 9 ✅
+
+✅ Database role enums
+✅ Central authorization policies
+✅ Centralized API errors
+✅ Prisma error normalization
+✅ Data-integrity review
+✅ Cross-organization isolation
+✅ Task authorization hardening
+✅ Request IDs
+✅ Structured request logging
+

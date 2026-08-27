@@ -5,10 +5,28 @@ import usersRoutes from "./modules/users/users.routes.js";
 import organizationRoutes from "./modules/organizations/organization.routes.js";
 import projectRoutes from "./modules/projects/project.router.js";
 import taskRoutes from "./modules/tasks/task.routes.js";
-import { errorMiddleware } from "./middleware/error.middleware.js";
-import { notFoundMiddleware } from "./middleware/not-found.middleware.js";
-const app = express();
 
+import { notFoundMiddleware } from "./middleware/not-found.middleware.js";
+import {
+  requestIdMiddleware,
+} from "./middleware/request-id.middleware.js";
+
+import {
+  requestLoggerMiddleware,
+} from "./middleware/request-logger.middleware.js";
+
+import {
+  errorHandler,
+} from "./middleware/error.middleware.js";
+
+const app = express();
+app.use(
+  requestIdMiddleware,
+);
+
+app.use(
+  requestLoggerMiddleware,
+);
 app.use(cors());
 app.use(express.json());
 
@@ -28,5 +46,5 @@ app.use("/api/organizations",organizationRoutes);
 app.use(notFoundMiddleware);
 
 // Global error handler — must be last
-app.use(errorMiddleware);
+app.use(errorHandler);
 export default app;

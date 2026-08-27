@@ -6,6 +6,11 @@ import type {
   UpdateMemberRoleInput,
   UpdateOrganizationInput,
 } from "./organization.schema.js";
+import {
+  canManageMembers,
+  canModifyOrganization,
+} from "../../middleware/authorization/organization.policy.js";
+import { ConflictError, ForbiddenError, NotFoundError } from "../../errors/app-error.js";
 
 export async function createOrganization(
   userId: string,
@@ -81,7 +86,9 @@ export async function addMember(
     });
 
   if (!user) {
-    throw new Error("User not found");
+    throw new NotFoundError(
+      "User not found",
+    );
   }
 
   const existingMember =
@@ -95,7 +102,7 @@ export async function addMember(
     });
 
   if (existingMember) {
-    throw new Error(
+    throw new ConflictError(
       "User is already a member",
     );
   }
@@ -337,19 +344,10 @@ async function getActorMembership(
     });
 
   if (!membership) {
-    throw new Error(
+    throw new ForbiddenError(
       "You are not a member of this organization",
     );
   }
 
   return membership;
-}
-
-function canManageMembers(
-  role: string,
-) {
-  return (
-    role === "OWNER" ||
-    role === "ADMIN"
-  );
 }
