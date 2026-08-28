@@ -8,11 +8,7 @@ export const TASK_STATUSES = [
   "DONE",
 ] as const;
 
-export const TASK_PRIORITIES = [
-  "LOW",
-  "MEDIUM",
-  "HIGH",
-] as const;
+export const TASK_PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
 
 export const createTaskSchema = z.object({
   title: z
@@ -27,18 +23,11 @@ export const createTaskSchema = z.object({
     .max(2000, "Description must be at most 2000 characters")
     .optional(),
 
-  status: z
-    .enum(TASK_STATUSES)
-    .default("TODO"),
+  status: z.enum(TASK_STATUSES).default("TODO"),
 
-  priority: z
-    .enum(TASK_PRIORITIES)
-    .default("MEDIUM"),
+  priority: z.enum(TASK_PRIORITIES).default("MEDIUM"),
 
-  assigneeId: z
-    .string()
-    .min(1)
-    .optional(),
+  assigneeId: z.string().min(1).optional(),
 });
 
 export const updateTaskSchema = z.object({
@@ -55,47 +44,53 @@ export const updateTaskSchema = z.object({
     .max(2000, "Description must be at most 2000 characters")
     .optional(),
 
-  status: z
-    .enum(TASK_STATUSES)
-    .optional(),
+  status: z.enum(TASK_STATUSES).optional(),
 
-  priority: z
-    .enum(TASK_PRIORITIES)
-    .optional(),
+  priority: z.enum(TASK_PRIORITIES).optional(),
 
-  assigneeId: z
-    .string()
-    .min(1)
-    .nullable()
-    .optional(),
+  assigneeId: z.string().min(1).nullable().optional(),
 });
-
 
 export const paginationSchema = z.object({
-  page: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .default(1),
+  page: z.coerce.number().int().min(1).default(1),
 
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(100)
-    .default(20),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-export type CreateTaskInput = z.infer<
-  typeof createTaskSchema
->;
+export const taskFilterSchema = z.object({
+  status: z
+    .enum(["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"])
+    .optional(),
 
-export type UpdateTaskInput = z.infer<
-  typeof updateTaskSchema
->;
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
 
-export type TaskStatus =
-  (typeof TASK_STATUSES)[number];
+  page: z.coerce.number().int().min(1).default(1),
 
-export type TaskPriority =
-  (typeof TASK_PRIORITIES)[number];
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+
+  search: z.string().trim().min(1).max(100).optional(),
+  sort: z
+  .enum([
+    "createdAt",
+    "updatedAt",
+    "title",
+    "status",
+    "priority",
+  ])
+  .default("createdAt"),
+
+order: z
+  .enum([
+    "asc",
+    "desc",
+  ])
+  .default("desc"),
+});
+
+export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];

@@ -8,6 +8,7 @@ import {
   createTaskSchema,
   updateTaskSchema,
   paginationSchema,
+  taskFilterSchema
 } from "./task.schema.js";
 
 import {
@@ -80,35 +81,43 @@ export async function getAll(
     const projectId =
       req.params.projectId as string;
 
-    const pagination =
-      paginationSchema.safeParse(
+      const filters =
+      taskFilterSchema.safeParse(
         req.query,
       );
-
-    if (!pagination.success) {
+    
+    if (!filters.success) {
       return res.status(400).json({
         message:
-          "Invalid pagination parameters",
-        code:
-          "VALIDATION_ERROR",
+          "Invalid task query parameters",
+        code: "VALIDATION_ERROR",
         errors:
-          pagination.error.flatten(),
+          filters.error.flatten(),
       });
     }
-
+    
     const {
       page,
       limit,
-    } = pagination.data;
+      status,
+      priority,
+      search,
+      sort,
+      order
+    } = filters.data;
 
     const result =
-      await getTasks(
-        projectId,
-        req.userId,
-        page,
-        limit,
-      );
-
+    await getTasks(
+      projectId,
+      req.userId,
+      page,
+      limit,
+      status,
+      priority,
+      search,
+      sort,
+      order
+    );
     return res.status(200).json({
       tasks: result.tasks,
 

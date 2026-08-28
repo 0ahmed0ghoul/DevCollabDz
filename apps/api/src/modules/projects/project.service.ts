@@ -86,17 +86,35 @@ export async function getProjects(organizationId: string, userId: string) {
     where: {
       organizationId,
     },
-    include: {
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
+  
     orderBy: {
       createdAt: "desc",
+    },
+  
+    include: {
+      members: {
+        select: {
+          id: true,
+          userId: true,
+          role: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
+  
+      _count: {
+        select: {
+          tasks: true,
+        },
+      },
     },
   });
 }

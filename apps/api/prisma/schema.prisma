@@ -49,10 +49,12 @@ model OrganizationMember {
   organizationId String
   role           OrganizationRole @default(MEMBER)
   createdAt      DateTime         @default(now())
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
+  @@index([organizationId])
 }
 
 model Project {
@@ -64,10 +66,12 @@ model Project {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner        User         @relation(fields: [ownerId], references: [id])
-  members ProjectMember[]
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User          @relation(fields: [ownerId], references: [id])
+  members      ProjectMember[]
   tasks        Task[]
+
+  @@index([organizationId])
 }
 
 model ProjectMember {
@@ -77,11 +81,12 @@ model ProjectMember {
   role      ProjectRole @default(MEMBER)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
+  @@index([projectId])
 }
 
 model Task {
@@ -97,4 +102,7 @@ model Task {
 
   project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignee User?   @relation(fields: [assigneeId], references: [id])
+
+  @@index([projectId, createdAt])
+  @@index([projectId, updatedAt])
 }

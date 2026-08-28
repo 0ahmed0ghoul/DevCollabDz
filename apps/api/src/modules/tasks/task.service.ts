@@ -166,6 +166,24 @@ export async function getTasks(
   userId: string,
   page: number,
   limit: number,
+  status?:
+    | "BACKLOG"
+    | "TODO"
+    | "IN_PROGRESS"
+    | "REVIEW"
+    | "DONE",
+  priority?:
+    | "LOW"
+    | "MEDIUM"
+    | "HIGH",
+  search?: string,
+  sort:
+    | "createdAt"
+    | "updatedAt"
+    | "title"
+    | "status"
+    | "priority" = "createdAt",
+  order: "asc" | "desc" = "desc",
 ) {
   await getProjectAccess(
     projectId,
@@ -175,13 +193,91 @@ export async function getTasks(
   const skip =
     (page - 1) * limit;
 
+  const where = {
+    projectId,
+
+    ...(status
+      ? { status }
+      : {}),
+
+    ...(priority
+      ? { priority }
+      : {}),
+
+    ...(search
+      ? {
+          OR: [
+            {
+              title: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              description: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+
+  const orderByMap = {
+    createdAt: [
+      {
+        createdAt: order,
+      },
+      {
+        id: order,
+      },
+    ],
+  
+    updatedAt: [
+      {
+        updatedAt: order,
+      },
+      {
+        id: order,
+      },
+    ],
+  
+    title: [
+      {
+        title: order,
+      },
+      {
+        id: order,
+      },
+    ],
+  
+    status: [
+      {
+        status: order,
+      },
+      {
+        id: order,
+      },
+    ],
+  
+    priority: [
+      {
+        priority: order,
+      },
+      {
+        id: order,
+      },
+    ],
+  } as const;
+  
+  const orderBy =
+    orderByMap[sort];
+
   const [tasks, total] =
     await Promise.all([
       prisma.task.findMany({
-        where: {
-          projectId,
-        },
-
+        where,
         include: {
           assignee: {
             select: {
@@ -191,20 +287,10 @@ export async function getTasks(
             },
           },
         },
-
-        orderBy: {
-          createdAt: "desc",
-        },
-
+        orderBy,
         skip,
         take: limit,
-      }),
-
-      prisma.task.count({
-        where: {
-          projectId,
-        },
-      }),
+      })
     ]);
 
   return {
