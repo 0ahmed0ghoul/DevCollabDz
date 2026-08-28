@@ -281,3 +281,21 @@ Day 9 ✅
 ✅ Request IDs
 ✅ Structured request logging
 
+
+Day 10 completion criteria
+
+When all of those pass:
+
+DAY 10 ✅
+
+✅ ProjectMember database model
+✅ Project-level roles
+✅ Atomic project creation
+✅ Project member APIs
+✅ Project-level authorization
+✅ Project-scoped tasks
+✅ Project-scoped assignees
+✅ Frontend project membership
+✅ Legacy memberIds removed
+✅ Cross-organization isolation
+✅ Final RBAC regression

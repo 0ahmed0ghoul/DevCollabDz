@@ -161,26 +161,56 @@ export async function createTask(
   });
 }
 
-export async function getTasks(projectId: string, userId: string) {
-  await getProjectAccess(projectId, userId);
+export async function getTasks(
+  projectId: string,
+  userId: string,
+  page: number,
+  limit: number,
+) {
+  await getProjectAccess(
+    projectId,
+    userId,
+  );
 
-  return prisma.task.findMany({
-    where: {
-      projectId,
-    },
-    include: {
-      assignee: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
+  const skip =
+    (page - 1) * limit;
+
+  const [tasks, total] =
+    await Promise.all([
+      prisma.task.findMany({
+        where: {
+          projectId,
         },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+
+        include: {
+          assignee: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        skip,
+        take: limit,
+      }),
+
+      prisma.task.count({
+        where: {
+          projectId,
+        },
+      }),
+    ]);
+
+  return {
+    tasks,
+    total,
+  };
 }
 
 export async function getTask(taskId: string, userId: string) {

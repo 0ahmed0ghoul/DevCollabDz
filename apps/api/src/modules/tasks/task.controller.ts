@@ -7,6 +7,7 @@ import type {
 import {
   createTaskSchema,
   updateTaskSchema,
+  paginationSchema,
 } from "./task.schema.js";
 
 import {
@@ -79,14 +80,46 @@ export async function getAll(
     const projectId =
       req.params.projectId as string;
 
-    const tasks =
+    const pagination =
+      paginationSchema.safeParse(
+        req.query,
+      );
+
+    if (!pagination.success) {
+      return res.status(400).json({
+        message:
+          "Invalid pagination parameters",
+        code:
+          "VALIDATION_ERROR",
+        errors:
+          pagination.error.flatten(),
+      });
+    }
+
+    const {
+      page,
+      limit,
+    } = pagination.data;
+
+    const result =
       await getTasks(
         projectId,
         req.userId,
+        page,
+        limit,
       );
 
     return res.status(200).json({
-      tasks,
+      tasks: result.tasks,
+
+      pagination: {
+        page,
+        limit,
+        total: result.total,
+        totalPages: Math.ceil(
+          result.total / limit,
+        ),
+      },
     });
   } catch (error) {
     next(error);
