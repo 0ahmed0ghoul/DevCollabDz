@@ -39,15 +39,18 @@ async function getProjectAccess(
   }
 
   const organizationMembership =
-    await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId:
-            project.organizationId,
-        },
+  await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId:
+          project.organizationId,
       },
-    });
+    },
+    select: {
+      role: true,
+    },
+  });
 
   if (!organizationMembership) {
     throw new ForbiddenError(
@@ -56,14 +59,18 @@ async function getProjectAccess(
   }
 
   const projectMembership =
-    await prisma.projectMember.findUnique({
-      where: {
-        projectId_userId: {
-          projectId,
-          userId,
-        },
+  await prisma.projectMember.findUnique({
+    where: {
+      projectId_userId: {
+        projectId,
+        userId,
       },
-    });
+    },
+    select: {
+      id: true,
+      role: true,
+    },
+  });
 
   if (!projectMembership) {
     throw new ForbiddenError(

@@ -1,70 +1,72 @@
 import { prisma } from "../../database/prisma.js";
-import { ForbiddenError ,NotFoundError} from "../../errors/app-error.js";
+import { ForbiddenError, NotFoundError } from "../../errors/app-error.js";
 import type {
   CreateProjectInput,
   UpdateProjectInput,
 } from "./project.schema.js";
+import {
+  getCachedProjectList,
+  invalidateProjectListCache,
+  setCachedProjectList,
+} from "../../cache/project.cache.js";
 
 import type { ProjectRole } from "../../generated/prisma/client.js";
 
 export async function createProject(
   organizationId: string,
   userId: string,
-  input: CreateProjectInput,
+  input: CreateProjectInput
 ) {
-  const membership =
-    await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId,
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId,
+      },
+    },
+    select: {
+      role: true,
+    },
+  });
+
+  if (!membership) {
+    throw new ForbiddenError("You are not a member of this organization");
+  }
+
+  const project = await prisma.$transaction(async (tx) => {
+    const createdProject = await tx.project.create({
+      data: {
+        name: input.name,
+        description: input.description,
+
+        organization: {
+          connect: {
+            id: organizationId,
+          },
+        },
+
+        owner: {
+          connect: {
+            id: userId,
+          },
         },
       },
     });
 
-  if (!membership) {
-    throw new ForbiddenError(
-      "You are not a member of this organization",
-    );
-  }
-
-  const project =
-    await prisma.$transaction(
-      async (tx) => {
-        const createdProject =
-          await tx.project.create({
-            data: {
-              name: input.name,
-              description:
-                input.description,
-
-              organization: {
-                connect: {
-                  id: organizationId,
-                },
-              },
-
-              owner: {
-                connect: {
-                  id: userId,
-                },
-              },
-            },
-          });
-
-        await tx.projectMember.create({
-          data: {
-            projectId:
-              createdProject.id,
-            userId,
-            role: "OWNER",
-          },
-        });
-
-        return createdProject;
+    await tx.projectMember.create({
+      data: {
+        projectId: createdProject.id,
+        userId,
+        role: "OWNER",
       },
-    );
+    });
 
+    return createdProject;
+  });
+
+  await invalidateProjectListCache(
+    organizationId,
+  );
   return project;
 }
 
@@ -76,27 +78,43 @@ export async function getProjects(organizationId: string, userId: string) {
         organizationId,
       },
     },
+    select: {
+      role: true,
+    },
   });
 
   if (!membership) {
     throw new Error("You are not a member of this organization");
   }
+  const cached = await getCachedProjectList(organizationId);
 
-  return prisma.project.findMany({
+  if (cached) {
+    return cached;
+  }
+  const projects = await prisma.project.findMany({
     where: {
       organizationId,
     },
-  
+
     orderBy: {
       createdAt: "desc",
     },
-  
-    include: {
+
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      organizationId: true,
+      ownerId: true,
+      createdAt: true,
+      updatedAt: true,
+
       members: {
         select: {
           id: true,
           userId: true,
           role: true,
+
           user: {
             select: {
               id: true,
@@ -105,30 +123,39 @@ export async function getProjects(organizationId: string, userId: string) {
             },
           },
         },
+
         orderBy: {
           createdAt: "asc",
         },
       },
-  
+
       _count: {
         select: {
           tasks: true,
+          members: true,
         },
       },
     },
   });
+
+  await setCachedProjectList(organizationId, projects);
+
+  return projects;
 }
 
-export async function getProject(
-  projectId: string,
-  userId: string
-) {
+export async function getProject(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: {
       id: projectId,
     },
-    include: {
-      organization: true,
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      organizationId: true,
+      ownerId: true,
+      createdAt: true,
+      updatedAt: true,
 
       owner: {
         select: {
@@ -144,20 +171,17 @@ export async function getProject(
     throw new Error("Project not found");
   }
 
-  const membership =
-    await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId: project.organizationId,
-        },
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId: project.organizationId,
       },
-    });
+    },
+  });
 
   if (!membership) {
-    throw new Error(
-      "You are not a member of this organization"
-    );
+    throw new Error("You are not a member of this organization");
   }
 
   return project;
@@ -166,49 +190,38 @@ export async function getProject(
 export async function updateProject(
   projectId: string,
   userId: string,
-  input: UpdateProjectInput,
+  input: UpdateProjectInput
 ) {
-  const project =
-    await prisma.project.findUnique({
-      where: {
-        id: projectId,
-      },
-    });
+  const project = await prisma.project.findUnique({
+    where: {
+      id: projectId,
+    },
+  });
 
   if (!project) {
-    throw new Error(
-      "Project not found",
-    );
+    throw new Error("Project not found");
   }
 
-  const membership =
-    await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId:
-            project.organizationId,
-        },
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId: project.organizationId,
       },
-    });
+    },
+  });
 
   if (!membership) {
-    throw new Error(
-      "You are not a member of this organization",
-    );
+    throw new Error("You are not a member of this organization");
   }
 
-  const canManage =
-    project.ownerId === userId ||
-    membership.role === "OWNER";
+  const canManage = project.ownerId === userId || membership.role === "OWNER";
 
   if (!canManage) {
-    throw new Error(
-      "You do not have permission to modify this project",
-    );
+    throw new Error("You do not have permission to modify this project");
   }
 
-  return prisma.project.update({
+  const updatedProject = await prisma.project.update({
     where: {
       id: projectId,
     },
@@ -221,8 +234,7 @@ export async function updateProject(
 
       ...(input.description !== undefined
         ? {
-            description:
-              input.description,
+            description: input.description,
           }
         : {}),
     },
@@ -236,50 +248,42 @@ export async function updateProject(
       },
     },
   });
+  await invalidateProjectListCache(
+    project.organizationId,
+  );
+  
+
+  return updatedProject;
 }
 
-export async function deleteProject(
-  projectId: string,
-  userId: string,
-) {
-  const project =
-    await prisma.project.findUnique({
-      where: {
-        id: projectId,
-      },
-    });
+export async function deleteProject(projectId: string, userId: string) {
+  const project = await prisma.project.findUnique({
+    where: {
+      id: projectId,
+    },
+  });
 
   if (!project) {
-    throw new Error(
-      "Project not found",
-    );
+    throw new Error("Project not found");
   }
 
-  const membership =
-    await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId:
-            project.organizationId,
-        },
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId: project.organizationId,
       },
-    });
+    },
+  });
 
   if (!membership) {
-    throw new Error(
-      "You are not a member of this organization",
-    );
+    throw new Error("You are not a member of this organization");
   }
 
-  const canManage =
-    project.ownerId === userId ||
-    membership.role === "OWNER";
+  const canManage = project.ownerId === userId || membership.role === "OWNER";
 
   if (!canManage) {
-    throw new Error(
-      "You do not have permission to modify this project",
-    );
+    throw new Error("You do not have permission to modify this project");
   }
 
   await prisma.project.delete({
@@ -287,62 +291,57 @@ export async function deleteProject(
       id: projectId,
     },
   });
+  await invalidateProjectListCache(
+    project.organizationId,
+  );
 }
 
-
-async function getProjectAccess(
-  projectId: string,
-  userId: string,
-) {
-  const project =
-    await prisma.project.findUnique({
-      where: {
-        id: projectId,
-      },
-      select: {
-        id: true,
-        organizationId: true,
-        ownerId: true,
-      },
-    });
+async function getProjectAccess(projectId: string, userId: string) {
+  const project = await prisma.project.findUnique({
+    where: {
+      id: projectId,
+    },
+    select: {
+      id: true,
+      organizationId: true,
+      ownerId: true,
+    },
+  });
 
   if (!project) {
-    throw new NotFoundError(
-      "Project not found",
-    );
+    throw new NotFoundError("Project not found");
   }
 
-  const organizationMembership =
-    await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId:
-            project.organizationId,
-        },
+  const organizationMembership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId: project.organizationId,
       },
-    });
+    },
+    select: {
+      role: true,
+    },
+  });
 
   if (!organizationMembership) {
-    throw new ForbiddenError(
-      "You are not a member of this organization",
-    );
+    throw new ForbiddenError("You are not a member of this organization");
   }
 
-  const projectMembership =
-    await prisma.projectMember.findUnique({
-      where: {
-        projectId_userId: {
-          projectId,
-          userId,
-        },
+  const projectMembership = await prisma.projectMember.findUnique({
+    where: {
+      projectId_userId: {
+        projectId,
+        userId,
       },
-    });
-
+    },
+    select: {
+      id: true,
+      role: true,
+    },
+  });
   if (!projectMembership) {
-    throw new ForbiddenError(
-      "You are not a member of this project",
-    );
+    throw new ForbiddenError("You are not a member of this project");
   }
 
   return {

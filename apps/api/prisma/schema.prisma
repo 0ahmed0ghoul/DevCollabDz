@@ -15,10 +15,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships OrganizationMember[]
+  memberships        OrganizationMember[]
   projectMemberships ProjectMember[]
-  projects    Project[]
-  tasks       Task[]
+  projects           Project[]
+  tasks              Task[]
 }
 
 enum OrganizationRole {
@@ -66,8 +66,8 @@ model Project {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner        User          @relation(fields: [ownerId], references: [id])
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User            @relation(fields: [ownerId], references: [id])
   members      ProjectMember[]
   tasks        Task[]
 
@@ -89,16 +89,30 @@ model ProjectMember {
   @@index([projectId])
 }
 
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 model Task {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
   description String?
-  status      String   @default("TODO")
-  priority    String   @default("MEDIUM")
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
   projectId   String
   assigneeId  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignee User?   @relation(fields: [assigneeId], references: [id])

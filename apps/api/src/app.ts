@@ -18,6 +18,7 @@ import {
 import {
   errorHandler,
 } from "./middleware/error.middleware.js";
+import { redis } from "./database/redis.js";
 
 const app = express();
 app.use(
@@ -29,6 +30,8 @@ app.use(
 );
 app.use(cors());
 app.use(express.json());
+
+
 
 app.get("/api/health", (_req, res) => {
   res.status(200).json({

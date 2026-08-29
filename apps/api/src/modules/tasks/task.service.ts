@@ -226,58 +226,34 @@ export async function getTasks(
 
   const orderByMap = {
     createdAt: [
-      {
-        createdAt: order,
-      },
-      {
-        id: order,
-      },
+      { createdAt: order },
+      { id: order },
     ],
-  
     updatedAt: [
-      {
-        updatedAt: order,
-      },
-      {
-        id: order,
-      },
+      { updatedAt: order },
+      { id: order },
     ],
-  
     title: [
-      {
-        title: order,
-      },
-      {
-        id: order,
-      },
+      { title: order },
+      { id: order },
     ],
-  
     status: [
-      {
-        status: order,
-      },
-      {
-        id: order,
-      },
+      { status: order },
+      { id: order },
     ],
-  
     priority: [
-      {
-        priority: order,
-      },
-      {
-        id: order,
-      },
+      { priority: order },
+      { id: order },
     ],
-  } as const;
+  };
   
-  const orderBy =
-    orderByMap[sort];
+  const orderBy = orderByMap[sort];
 
   const [tasks, total] =
     await Promise.all([
       prisma.task.findMany({
         where,
+
         include: {
           assignee: {
             select: {
@@ -287,10 +263,16 @@ export async function getTasks(
             },
           },
         },
+
         orderBy,
+
         skip,
         take: limit,
-      })
+      }),
+
+      prisma.task.count({
+        where,
+      }),
     ]);
 
   return {
