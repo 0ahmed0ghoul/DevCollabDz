@@ -12,6 +12,11 @@ import {
 
 import type { ProjectRole } from "../../generated/prisma/client.js";
 
+import {
+  withCacheLock,
+} from "../../cache/cache-lock.js";
+
+
 export async function createProject(
   organizationId: string,
   userId: string,
@@ -86,61 +91,83 @@ export async function getProjects(organizationId: string, userId: string) {
   if (!membership) {
     throw new Error("You are not a member of this organization");
   }
-  const cached = await getCachedProjectList(organizationId);
+  const cached =
+  await getCachedProjectList(
+    organizationId,
+  );
 
-  if (cached) {
-    return cached;
-  }
-  const projects = await prisma.project.findMany({
-    where: {
-      organizationId,
-    },
+if (cached) {
+  return cached;
+}
 
-    orderBy: {
-      createdAt: "desc",
-    },
+return withCacheLock(
+  `projects:${organizationId}`,
+  async () => {
+    const secondCheck =
+      await getCachedProjectList(
+        organizationId,
+      );
 
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      organizationId: true,
-      ownerId: true,
-      createdAt: true,
-      updatedAt: true,
+    if (secondCheck) {
+      return secondCheck;
+    }
 
-      members: {
-        select: {
-          id: true,
-          userId: true,
-          role: true,
-
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
+    const projects =
+      await prisma.project.findMany({
+        where: {
+          organizationId,
         },
 
         orderBy: {
-          createdAt: "asc",
+          createdAt: "desc",
         },
-      },
 
-      _count: {
         select: {
-          tasks: true,
-          members: true,
+          id: true,
+          name: true,
+          description: true,
+          organizationId: true,
+          ownerId: true,
+          createdAt: true,
+          updatedAt: true,
+
+          members: {
+            select: {
+              id: true,
+              userId: true,
+              role: true,
+
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
+
+          _count: {
+            select: {
+              tasks: true,
+              members: true,
+            },
+          },
         },
-      },
-    },
-  });
+      });
 
-  await setCachedProjectList(organizationId, projects);
+    await setCachedProjectList(
+      organizationId,
+      projects,
+    );
 
-  return projects;
+    return projects;
+  },
+);
 }
 
 export async function getProject(projectId: string, userId: string) {

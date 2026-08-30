@@ -1,87 +1,91 @@
 import { redis } from "../database/redis.js";
 
-const PROJECT_LIST_TTL_SECONDS = 60;
+import {
+  cacheGet,
+  cacheSet,
+  cacheDelete,
+} from "./cache-utils.js";
 
-export function projectListCacheKey(
-  organizationId: string,
-) {
-  return `projects:organization:${organizationId}`;
-}
+import {
+  projectListCacheKey,
+} from "./cache-keys.js";
+
+import {
+  recordCacheHit,
+  recordCacheMiss,
+} from "./cache-metrics.js";
+
+
+const PROJECT_LIST_TTL_SECONDS = 60;
 
 export async function getCachedProjectList(
   organizationId: string,
 ) {
-  try {
-    if (!redis.isReady) {
-      return null;
-    }
-
-    const key =
-      projectListCacheKey(
-        organizationId,
-      );
-
-    const cached =
-      await redis.get(key);
-
-    if (!cached) {
-      return null;
-    }
-
-    return JSON.parse(cached);
-  } catch (error) {
-    console.error(
-      "Project cache read failed:",
-      error,
-    );
-
+  if (!redis.isReady) {
     return null;
   }
+  const cached = await cacheGet(
+    () =>
+      redis.get(
+        projectListCacheKey(
+          organizationId,
+        ),
+      ),
+    null,
+  );
+  
+  if (cached) {
+    recordCacheHit();
+  } else {
+    recordCacheMiss();
+  }
+  
+  return cached;
+  return cacheGet(
+    () =>
+      redis.get(
+        projectListCacheKey(
+          organizationId,
+        ),
+      ),
+    null,
+  );
 }
 
 export async function setCachedProjectList(
   organizationId: string,
   projects: unknown,
 ) {
-  try {
-    if (!redis.isReady) {
-      return;
-    }
-    const key =
+  if (!redis.isReady) {
+    return;
+  }
+
+  await cacheSet(() =>
+    redis.set(
       projectListCacheKey(
         organizationId,
-      );
-
-    await redis.set(
-      key,
+      ),
       JSON.stringify(projects),
       {
         EX:
           PROJECT_LIST_TTL_SECONDS,
       },
-    );
-  } catch (error) {
-    console.error(
-      "Project cache write failed:",
-      error,
-    );
-  }
+    ),
+  );
 }
 
 export async function invalidateProjectListCache(
   organizationId: string,
 ) {
-  try {
-    const key =
+  if (!redis.isReady) {
+    return;
+  }
+
+  await cacheDelete(() =>
+    redis.del(
       projectListCacheKey(
         organizationId,
-      );
-
-    await redis.del(key);
-  } catch (error) {
-    console.error(
-      "Project cache invalidation failed:",
-      error,
-    );
-  }
+      ),
+    ),
+  );
 }

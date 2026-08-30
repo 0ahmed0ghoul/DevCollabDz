@@ -1,14 +1,25 @@
 import { redis } from "../database/redis.js";
 
+import { cacheGet, cacheSet, cacheDelete } from "./cache-utils.js";
+
+import { taskProjectCachePrefix } from "./cache-keys.js";
+
+import { recordCacheHit, recordCacheMiss } from "./cache-metrics.js";
+
 const TASK_LIST_TTL_SECONDS = 30;
 
 export interface TaskListCacheQuery {
   page: number;
   limit: number;
+
   status?: "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
+
   priority?: "LOW" | "MEDIUM" | "HIGH";
+
   search?: string;
+
   sort: "createdAt" | "updatedAt" | "title" | "status" | "priority";
+
   order: "asc" | "desc";
 }
 
@@ -22,25 +33,22 @@ export async function getCachedTaskList(
   projectId: string,
   query: TaskListCacheQuery
 ) {
-  try {
-    if (!redis.isReady) {
-      return null;
-    }
-
-    const key = taskListCacheKey(projectId, query);
-
-    const cached = await redis.get(key);
-
-    if (!cached) {
-      return null;
-    }
-
-    return JSON.parse(cached);
-  } catch (error) {
-    console.error("Task list cache read failed:", error);
-
+  if (!redis.isReady) {
     return null;
   }
+  const cached = await cacheGet(
+    () => redis.get(taskListCacheKey(projectId, query)),
+    null
+  );
+
+  if (cached) {
+    recordCacheHit();
+  } else {
+    recordCacheMiss();
+  }
+
+  return cached;
+  return cacheGet(() => redis.get(taskListCacheKey(projectId, query)), null);
 }
 
 export async function setCachedTaskList(
@@ -48,23 +56,24 @@ export async function setCachedTaskList(
   query: TaskListCacheQuery,
   data: unknown
 ) {
-  try {
-    if (!redis.isReady) {
-      return;
-    }
-    const key = taskListCacheKey(projectId, query);
-
-    await redis.set(key, JSON.stringify(data), {
-      EX: TASK_LIST_TTL_SECONDS,
-    });
-  } catch (error) {
-    console.error("Task list cache write failed:", error);
+  if (!redis.isReady) {
+    return;
   }
+
+  await cacheSet(() =>
+    redis.set(taskListCacheKey(projectId, query), JSON.stringify(data), {
+      EX: TASK_LIST_TTL_SECONDS,
+    })
+  );
 }
 
 export async function invalidateProjectTaskCache(projectId: string) {
-  try {
-    const pattern = `tasks:project:${projectId}:*`;
+  if (!redis.isReady) {
+    return;
+  }
+
+  await cacheDelete(async () => {
+    const pattern = `${taskProjectCachePrefix(projectId)}*`;
 
     const keys: string[] = [];
 
@@ -78,7 +87,5 @@ export async function invalidateProjectTaskCache(projectId: string) {
     if (keys.length > 0) {
       await redis.del(keys);
     }
-  } catch (error) {
-    console.error("Task list cache invalidation failed:", error);
-  }
+  });
 }

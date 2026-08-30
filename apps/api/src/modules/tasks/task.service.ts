@@ -5,6 +5,10 @@ import type { CreateTaskInput, UpdateTaskInput } from "./task.schema.js";
 import { ForbiddenError, NotFoundError } from "../../errors/app-error.js";
 import { getCachedTaskList, setCachedTaskList, TaskListCacheQuery,invalidateProjectTaskCache } from "../../cache/task.cache.js";
 
+import {
+  withCacheLock,
+} from "../../cache/cache-lock.js";
+
 async function getProjectAccess(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: {
@@ -136,19 +140,19 @@ export async function createTask(
     }
   }
 
-  const task = prisma.task.create({
+  const task = await prisma.task.create({
     data: {
       title: input.title,
       description: input.description,
       status: input.status ?? "TODO",
       priority: input.priority ?? "MEDIUM",
-
+  
       project: {
         connect: {
           id: projectId,
         },
       },
-
+  
       ...(input.assigneeId
         ? {
             assignee: {
@@ -160,6 +164,12 @@ export async function createTask(
         : {}),
     },
   });
+  
+  await invalidateProjectTaskCache(
+    projectId,
+  );
+  
+  return task;
   await invalidateProjectTaskCache(
     projectId,
   );
@@ -194,6 +204,7 @@ export async function getTasks(
     projectId,
     userId,
   );
+
   const cacheQuery: TaskListCacheQuery = {
     page,
     limit,
@@ -209,113 +220,129 @@ export async function getTasks(
     sort,
     order,
   };
-  
+
   const cached =
     await getCachedTaskList(
       projectId,
       cacheQuery,
     );
-  
+
   if (cached) {
     return cached;
   }
-  const skip =
-    (page - 1) * limit;
 
-  const where = {
-    projectId,
+  return withCacheLock(
+    `tasks:${projectId}:${JSON.stringify(cacheQuery)}`,
+    async () => {
+      const secondCheck =
+        await getCachedTaskList(
+          projectId,
+          cacheQuery,
+        );
 
-    ...(status
-      ? { status }
-      : {}),
+      if (secondCheck) {
+        return secondCheck;
+      }
 
-    ...(priority
-      ? { priority }
-      : {}),
+      const skip =
+        (page - 1) * limit;
 
-    ...(search
-      ? {
-          OR: [
-            {
-              title: {
-                contains: search,
-                mode: "insensitive" as const,
+      const where = {
+        projectId,
+
+        ...(status
+          ? { status }
+          : {}),
+
+        ...(priority
+          ? { priority }
+          : {}),
+
+        ...(search
+          ? {
+              OR: [
+                {
+                  title: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  description: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ],
+            }
+          : {}),
+      };
+
+      const orderByMap = {
+        createdAt: [
+          { createdAt: order },
+          { id: order },
+        ],
+        updatedAt: [
+          { updatedAt: order },
+          { id: order },
+        ],
+        title: [
+          { title: order },
+          { id: order },
+        ],
+        status: [
+          { status: order },
+          { id: order },
+        ],
+        priority: [
+          { priority: order },
+          { id: order },
+        ],
+      };
+
+      const orderBy =
+        orderByMap[sort];
+
+      const [tasks, total] =
+        await Promise.all([
+          prisma.task.findMany({
+            where,
+
+            include: {
+              assignee: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
               },
             },
-            {
-              description: {
-                contains: search,
-                mode: "insensitive" as const,
-              },
-            },
-          ],
-        }
-      : {}),
-  };
 
-  const orderByMap = {
-    createdAt: [
-      { createdAt: order },
-      { id: order },
-    ],
-    updatedAt: [
-      { updatedAt: order },
-      { id: order },
-    ],
-    title: [
-      { title: order },
-      { id: order },
-    ],
-    status: [
-      { status: order },
-      { id: order },
-    ],
-    priority: [
-      { priority: order },
-      { id: order },
-    ],
-  };
-  
-  const orderBy = orderByMap[sort];
+            orderBy,
+            skip,
+            take: limit,
+          }),
 
-  const [tasks, total] =
-    await Promise.all([
-      prisma.task.findMany({
-        where,
+          prisma.task.count({
+            where,
+          }),
+        ]);
 
-        include: {
-          assignee: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
+      const result = {
+        tasks,
+        total,
+      };
 
-        orderBy,
+      await setCachedTaskList(
+        projectId,
+        cacheQuery,
+        result,
+      );
 
-        skip,
-        take: limit,
-      }),
-
-      prisma.task.count({
-        where,
-      }),
-    ]);
-
-    const result = {
-      tasks,
-      total,
-    };
-    
-    await setCachedTaskList(
-      projectId,
-      cacheQuery,
-      result,
-    );
-    
-    return result;
+      return result;
+    },
+  );
 }
 
 export async function getTask(taskId: string, userId: string) {
@@ -347,7 +374,7 @@ export async function updateTask(
   }
 
   const updatedTask =
- prisma.task.update({
+    await prisma.task.update({
     where: {
       id: taskId,
     },

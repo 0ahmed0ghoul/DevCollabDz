@@ -20,6 +20,10 @@ import {
 } from "./middleware/error.middleware.js";
 import { redis } from "./database/redis.js";
 
+import {
+  getCacheMetrics,
+} from "./cache/cache-metrics.js";
+
 const app = express();
 app.use(
   requestIdMiddleware,
@@ -39,6 +43,20 @@ app.get("/api/health", (_req, res) => {
     service: "devcollab-api",
   });
 });
+
+app.get(
+  "/api/health/cache",
+  (_req, res) => {
+    return res.status(200).json({
+      redis: {
+        ready: redis.isReady,
+      },
+      cache:
+        getCacheMetrics(),
+    });
+  },
+);
+
 app.use("/api", projectRoutes);
 app.use("/api", taskRoutes);
 app.use("/api/auth", authRoutes);
