@@ -16,14 +16,44 @@ if (!redisUrl) {
 export const redis =
   createClient({
     url: redisUrl,
+
+    socket: {
+      reconnectStrategy: (
+        retries,
+      ) => {
+
+        return Math.min(
+          retries * 1000,
+          5000,
+        );
+      },
+    },
   });
 
 redis.on(
   "error",
   (error) => {
     console.error(
-      "Redis client error:",
-      error,
+      "⚠️ Redis connection error:",
+      error.message,
+    );
+  },
+);
+
+redis.on(
+  "reconnecting",
+  () => {
+    console.log(
+      "🔄 Redis reconnecting...",
+    );
+  },
+);
+
+redis.on(
+  "ready",
+  () => {
+    console.log(
+      "✅ Redis ready",
     );
   },
 );

@@ -11,47 +11,77 @@ export function projectListCacheKey(
 export async function getCachedProjectList(
   organizationId: string,
 ) {
-  const key =
-    projectListCacheKey(
-      organizationId,
+  try {
+    if (!redis.isReady) {
+      return null;
+    }
+
+    const key =
+      projectListCacheKey(
+        organizationId,
+      );
+
+    const cached =
+      await redis.get(key);
+
+    if (!cached) {
+      return null;
+    }
+
+    return JSON.parse(cached);
+  } catch (error) {
+    console.error(
+      "Project cache read failed:",
+      error,
     );
 
-  const cached =
-    await redis.get(key);
-
-  if (!cached) {
     return null;
   }
-
-  return JSON.parse(cached);
 }
 
 export async function setCachedProjectList(
   organizationId: string,
   projects: unknown,
 ) {
-  const key =
-    projectListCacheKey(
-      organizationId,
-    );
+  try {
+    if (!redis.isReady) {
+      return;
+    }
+    const key =
+      projectListCacheKey(
+        organizationId,
+      );
 
-  await redis.set(
-    key,
-    JSON.stringify(projects),
-    {
-      EX:
-        PROJECT_LIST_TTL_SECONDS,
-    },
-  );
+    await redis.set(
+      key,
+      JSON.stringify(projects),
+      {
+        EX:
+          PROJECT_LIST_TTL_SECONDS,
+      },
+    );
+  } catch (error) {
+    console.error(
+      "Project cache write failed:",
+      error,
+    );
+  }
 }
 
 export async function invalidateProjectListCache(
   organizationId: string,
 ) {
-  const key =
-    projectListCacheKey(
-      organizationId,
-    );
+  try {
+    const key =
+      projectListCacheKey(
+        organizationId,
+      );
 
-  await redis.del(key);
+    await redis.del(key);
+  } catch (error) {
+    console.error(
+      "Project cache invalidation failed:",
+      error,
+    );
+  }
 }

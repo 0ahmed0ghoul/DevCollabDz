@@ -3,6 +3,7 @@ import { prisma } from "../../database/prisma.js";
 import type { CreateTaskInput, UpdateTaskInput } from "./task.schema.js";
 
 import { ForbiddenError, NotFoundError } from "../../errors/app-error.js";
+import { getCachedTaskList, setCachedTaskList, TaskListCacheQuery,invalidateProjectTaskCache } from "../../cache/task.cache.js";
 
 async function getProjectAccess(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
@@ -135,7 +136,7 @@ export async function createTask(
     }
   }
 
-  return prisma.task.create({
+  const task = prisma.task.create({
     data: {
       title: input.title,
       description: input.description,
@@ -159,6 +160,10 @@ export async function createTask(
         : {}),
     },
   });
+  await invalidateProjectTaskCache(
+    projectId,
+  );
+  return task;
 }
 
 export async function getTasks(
@@ -189,7 +194,31 @@ export async function getTasks(
     projectId,
     userId,
   );
-
+  const cacheQuery: TaskListCacheQuery = {
+    page,
+    limit,
+    ...(status !== undefined
+      ? { status }
+      : {}),
+    ...(priority !== undefined
+      ? { priority }
+      : {}),
+    ...(search
+      ? { search }
+      : {}),
+    sort,
+    order,
+  };
+  
+  const cached =
+    await getCachedTaskList(
+      projectId,
+      cacheQuery,
+    );
+  
+  if (cached) {
+    return cached;
+  }
   const skip =
     (page - 1) * limit;
 
@@ -275,10 +304,18 @@ export async function getTasks(
       }),
     ]);
 
-  return {
-    tasks,
-    total,
-  };
+    const result = {
+      tasks,
+      total,
+    };
+    
+    await setCachedTaskList(
+      projectId,
+      cacheQuery,
+      result,
+    );
+    
+    return result;
 }
 
 export async function getTask(taskId: string, userId: string) {
@@ -309,19 +346,36 @@ export async function updateTask(
     }
   }
 
-  return prisma.task.update({
+  const updatedTask =
+ prisma.task.update({
     where: {
       id: taskId,
     },
     data: input,
   });
+
+
+await invalidateProjectTaskCache(
+  task.project.id,
+);
+
+return updatedTask;
 }
 
 export async function deleteTask(taskId: string, userId: string) {
-  await getTaskWithAccess(taskId, userId);
-  await prisma.task.delete({
-    where: {
-      id: taskId,
-    },
-  });
+  const { task } =
+  await getTaskWithAccess(
+    taskId,
+    userId,
+  );
+
+await prisma.task.delete({
+  where: {
+    id: taskId,
+  },
+});
+
+await invalidateProjectTaskCache(
+  task.project.id,
+);
 }

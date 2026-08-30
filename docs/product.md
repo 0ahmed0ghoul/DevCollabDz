@@ -235,7 +235,10 @@ Day 7 — Completed
 ✅ User-facing success/error toasts
 ✅ TypeScript clean on frontend and backend
 ✅ End-to-end CRUD testing passed
-Day 8 — Multi-Organization Workspace & Project Management
+
+DAY 8 ✅ COMPLETE
+
+Multi-Organization Workspace & Project Management
 Added persistent organization selection using localStorage, allowing the selected workspace to survive page refreshes.
 Implemented organization switching with automatic reloading of organization members and projects.
 Added real organization member management backed by the API.
@@ -281,11 +284,6 @@ Day 9 ✅
 ✅ Request IDs
 ✅ Structured request logging
 
-
-Day 10 completion criteria
-
-When all of those pass:
-
 DAY 10 ✅
 
 ✅ ProjectMember database model
@@ -325,3 +323,16 @@ DAY 12 ✅ COMPLETE
 ✅ DB enums/constraints
 ✅ API regression
 ✅ Frontend regression
+
+Day 13 COMPLETE
+
+✅ Redis integrated
+✅ Cache-aside pattern
+✅ Project-list cache
+✅ Task-list cache
+✅ Query-specific keys
+✅ TTL
+✅ Project invalidation
+✅ Task invalidation
+✅ Authorization preserved
+✅ UI verified
