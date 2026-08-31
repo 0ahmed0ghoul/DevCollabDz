@@ -72,6 +72,8 @@ app.get(
   },
 );
 
+
+
 app.use("/api", projectRoutes);
 app.use("/api", taskRoutes);
 app.use("/api/auth", authRoutes);
