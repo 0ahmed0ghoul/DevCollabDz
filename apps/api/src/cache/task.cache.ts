@@ -42,9 +42,9 @@ export async function getCachedTaskList(
   );
 
   if (cached) {
-    recordCacheHit();
+    recordCacheHit("tasks");
   } else {
-    recordCacheMiss();
+    recordCacheMiss("tasks");
   }
 
   return cached;

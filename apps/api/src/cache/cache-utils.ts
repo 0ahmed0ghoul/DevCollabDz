@@ -1,3 +1,5 @@
+import { logger } from "../utils/logger";
+
 export async function cacheGet<T>(
     operation: () => Promise<string | null>,
     fallback: T,
@@ -11,9 +13,11 @@ export async function cacheGet<T>(
   
       return JSON.parse(value) as T;
     } catch (error) {
-      console.error(
-        "Cache read failed:",
-        error,
+      logger.error(
+        {
+          err: error,
+        },
+        "Cache read failed",
       );
   
       return fallback;
@@ -26,9 +30,11 @@ export async function cacheGet<T>(
     try {
       await operation();
     } catch (error) {
-      console.error(
-        "Cache write failed:",
-        error,
+      logger.error(
+        {
+          err: error,
+        },
+        "Cache write failed",
       );
     }
   }
@@ -39,9 +45,11 @@ export async function cacheGet<T>(
     try {
       await operation();
     } catch (error) {
-      console.error(
-        "Cache invalidation failed:",
-        error,
+      logger.error(
+        {
+          err: error,
+        },
+        "Cache invalidation failed",
       );
     }
   }

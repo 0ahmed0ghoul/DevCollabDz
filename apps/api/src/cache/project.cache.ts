@@ -35,9 +35,10 @@ export async function getCachedProjectList(
   );
   
   if (cached) {
-    recordCacheHit();
+    recordCacheHit("projects");
+
   } else {
-    recordCacheMiss();
+    recordCacheMiss("projects");
   }
   
   return cached;

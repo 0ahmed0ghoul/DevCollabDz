@@ -23,6 +23,7 @@ import { redis } from "./database/redis.js";
 import {
   getCacheMetrics,
 } from "./cache/cache-metrics.js";
+import { metricsRegistry } from "./metrics/metrics.js";
 
 const app = express();
 app.use(
@@ -54,6 +55,20 @@ app.get(
       cache:
         getCacheMetrics(),
     });
+  },
+);
+
+app.get(
+  "/api/metrics",
+  async (_req, res) => {
+    res.setHeader(
+      "Content-Type",
+      metricsRegistry.contentType,
+    );
+
+    return res.send(
+      await metricsRegistry.metrics(),
+    );
   },
 );
 

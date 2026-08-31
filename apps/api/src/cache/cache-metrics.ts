@@ -1,12 +1,27 @@
+import { Counter } from "prom-client";
+import { metricsRegistry } from "../metrics/metrics";
+
 let cacheHits = 0;
 let cacheMisses = 0;
 
-export function recordCacheHit() {
+export function recordCacheHit(
+  cache = "unknown",
+) {
   cacheHits += 1;
+
+  cacheHitsTotal.inc({
+    cache,
+  });
 }
 
-export function recordCacheMiss() {
+export function recordCacheMiss(
+  cache = "unknown",
+) {
   cacheMisses += 1;
+
+  cacheMissesTotal.inc({
+    cache,
+  });
 }
 
 export function getCacheMetrics() {
@@ -25,3 +40,27 @@ export function getCacheMetrics() {
     hitRate,
   };
 }
+
+export const cacheHitsTotal =
+  new Counter({
+    name: "devcollab_cache_hits_total",
+    help: "Total cache hits",
+    labelNames: [
+      "cache",
+    ],
+    registers: [
+      metricsRegistry,
+    ],
+  });
+
+export const cacheMissesTotal =
+  new Counter({
+    name: "devcollab_cache_misses_total",
+    help: "Total cache misses",
+    labelNames: [
+      "cache",
+    ],
+    registers: [
+      metricsRegistry,
+    ],
+  });

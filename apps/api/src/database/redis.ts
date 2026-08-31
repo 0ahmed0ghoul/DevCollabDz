@@ -3,6 +3,8 @@ import "dotenv/config";
 import {
   createClient,
 } from "redis";
+import { logger } from "../utils/logger";
+import { redisReady } from "../metrics/metrics";
 
 const redisUrl =
   process.env.REDIS_URL;
@@ -30,21 +32,29 @@ export const redis =
     },
   });
 
-redis.on(
-  "error",
-  (error) => {
-    console.error(
-      "⚠️ Redis connection error:",
-      error.message,
-    );
-  },
-);
+  redisReady.set(
+    redis.isReady ? 1 : 0,
+  );
+
+  redis.on(
+    "error",
+    (error) => {
+      redisReady.set(0);
+  
+      logger.error(
+        {
+          err: error,
+        },
+        "Redis connection error",
+      );
+    },
+  );
 
 redis.on(
   "reconnecting",
   () => {
-    console.log(
-      "🔄 Redis reconnecting...",
+    logger.info(
+      "Redis reconnecting",
     );
   },
 );
@@ -52,8 +62,21 @@ redis.on(
 redis.on(
   "ready",
   () => {
-    console.log(
-      "✅ Redis ready",
+    redisReady.set(1);
+
+    logger.info(
+      "Redis ready",
+    );
+  },
+);
+
+redis.on(
+  "end",
+  () => {
+    redisReady.set(0);
+
+    logger.warn(
+      "Redis connection closed",
     );
   },
 );

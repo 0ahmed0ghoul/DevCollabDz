@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { prisma } from "../database/prisma.js";
+import { logger } from "../utils/logger.js";
 
 type OrganizationRole = "OWNER" | "ADMIN" | "MEMBER";
 
@@ -65,8 +66,18 @@ export function requireRole(
 
       next();
     } catch (error) {
-      console.error("Role authorization error:", error);
-
+      logger.error(
+        {
+          type: "authorization_error",
+          requestId:
+            res.locals.requestId ??
+            "unknown",
+          method: req.method,
+          path: req.originalUrl,
+          err: error,
+        },
+        "Role authorization error",
+      );
       return res.status(500).json({
         message: "Internal server error",
       });

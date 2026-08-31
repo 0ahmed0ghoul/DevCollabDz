@@ -3,6 +3,8 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../generated/prisma/client.js";
+import { logger } from "../utils/logger.js";
+import { databaseQueryDuration } from "../metrics/metrics.js";
 
 const connectionString =
   process.env.DATABASE_URL;
@@ -31,11 +33,24 @@ export const prisma =
     ],
   });
 
-prisma.$on(
-  "query",
-  (event) => {
-    console.log(
-      `[Prisma Query] ${event.duration}ms`,
-    );
-  },
-);
+  prisma.$on(
+    "query",
+    (event) => {
+      databaseQueryDuration.observe(
+        {
+          operation:
+            "prisma_query",
+        },
+        event.duration / 1000,
+      );
+  
+      logger.debug(
+        {
+          type: "database_query",
+          durationMs:
+            event.duration,
+        },
+        "Prisma query",
+      );
+    },
+  );
