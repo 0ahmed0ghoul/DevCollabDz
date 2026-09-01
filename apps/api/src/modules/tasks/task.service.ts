@@ -5,10 +5,12 @@ import type { CreateTaskInput, UpdateTaskInput } from "./task.schema.js";
 import { ForbiddenError, NotFoundError } from "../../errors/app-error.js";
 import { getCachedTaskList, setCachedTaskList, TaskListCacheQuery,invalidateProjectTaskCache } from "../../cache/task.cache.js";
 
-import {
-  withCacheLock,
-} from "../../cache/cache-lock.js";
+import {withCacheLock,} from "../../cache/cache-lock.js";
+import {getSocketServer,} from "../../realtime/socket-server.js";
 
+import {emitTaskCreated,emitTaskUpdated,
+  emitTaskDeleted,
+} from "../../realtime/task-events.js";
 async function getProjectAccess(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: {

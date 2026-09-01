@@ -3,7 +3,7 @@ import "dotenv/config";
 import {
   createClient,
 } from "redis";
-import { logger } from "../utils/logger";
+import { logger } from "../utils/logger.js";
 import { redisReady } from "../metrics/metrics";
 
 const redisUrl =

@@ -1,7 +1,7 @@
 import type { Socket } from "socket.io";
 
 import jwt from "jsonwebtoken";
-import { logger } from "../utils/logger";
+import { logger } from "../utils/logger.js";
 
 interface AccessTokenPayload {
   userId: string;
@@ -27,6 +27,15 @@ export function socketAuthMiddleware(
   socket: Socket,
   next: (err?: Error) => void
 ) {
+  logger.info(
+    {
+      socketId: socket.id,
+      hasToken:
+        typeof socket.handshake.auth?.token ===
+        "string",
+    },
+    "Socket handshake received",
+  );
   logger.info(
     {
       socketId: socket.id,

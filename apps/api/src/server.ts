@@ -6,26 +6,24 @@ import { Server } from "socket.io";
 import app from "./app.js";
 import { redis } from "./database/redis.js";
 import { logger } from "./utils/logger.js";
-import {socketAuthMiddleware,} from "./realtime/socket-auth.js";
-import {registerProjectRooms,} from "./realtime/project-rooms.js";
+import { socketAuthMiddleware } from "./realtime/socket-auth.js";
+import { registerProjectRooms } from "./realtime/project-rooms.js";
+import { setSocketServer } from "./realtime/socket-server.js";
 
-const PORT =process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
-
     try {
       await redis.connect();
 
-      logger.info(
-        "Redis connected",
-      );
+      logger.info("Redis connected");
     } catch (error) {
       logger.warn(
         {
           err: error,
         },
-        "Redis unavailable. Starting without cache.",
+        "Redis unavailable. Starting without cache."
       );
     }
 
@@ -33,75 +31,79 @@ async function startServer() {
      * Create ONE HTTP server.
      * Express and Socket.IO both use it.
      */
-    const httpServer =
-      createServer(app);
+    const httpServer = createServer(app);
 
     /*
      * Attach Socket.IO to the same
      * HTTP server.
      */
-    const io =
-      new Server(httpServer, {
-        cors: {
-          origin:
-            process.env.WEB_ORIGIN ||
-            "http://localhost:8080",
-          credentials: true,
+    const io = new Server(httpServer, {
+      cors: {
+        origin: process.env.WEB_ORIGIN || "http://localhost:8080",
+        credentials: true,
+      },
+    });
+    
+    io.engine.on("connection_error", (error) => {
+      logger.error(
+        {
+          code: error.code,
+          message: error.message,
+          context: error.context,
         },
-      });
-      io.use(
-        socketAuthMiddleware,
+        "Socket.IO engine connection error"
       );
-      registerProjectRooms(
-        io,
+    });
+
+    io.use(socketAuthMiddleware);
+    registerProjectRooms(io);
+    setSocketServer(io);
+
+    io.on("connect_error", (error) => {
+      logger.warn(
+        {
+          message: error.message,
+        },
+        "Socket.IO namespace connection error"
       );
-    io.on(
-      "connection",
-      (socket) => {
+    });
+
+    io.on("connection", (socket) => {
+      logger.info(
+        {
+          socketId: socket.id,
+        },
+        "WebSocket client connected"
+      );
+
+      socket.on("disconnect", (reason) => {
         logger.info(
           {
-            socketId:
-              socket.id,
+            socketId: socket.id,
+            reason,
           },
-          "WebSocket client connected",
+          "WebSocket client disconnected"
         );
-
-        socket.on(
-          "disconnect",
-          (reason) => {
-            logger.info(
-              {
-                socketId:
-                  socket.id,
-                reason,
-              },
-              "WebSocket client disconnected",
-            );
-          },
-        );
-      },
-    );
+      });
+    });
 
     /*
      * Start the HTTP server ONCE.
      */
-    httpServer.listen(
-      PORT,
-      () => {
-        logger.info(
-          {
-            port: PORT,
-          },
-          "DevCollab API running",
-        );
-      },
-    );
+    httpServer.listen(PORT, () => {
+      logger.info(
+        {
+          port: PORT,
+        },
+        "DevCollab API running"
+      );
+    });
   } catch (error) {
     logger.fatal(
       {
         err: error,
       },
-      "Failed to start server",
+      "Failed to start server"
     );
 
     process.exit(1);
