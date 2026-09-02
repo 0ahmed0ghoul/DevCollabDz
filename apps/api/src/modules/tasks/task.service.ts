@@ -3,12 +3,19 @@ import { prisma } from "../../database/prisma.js";
 import type { CreateTaskInput, UpdateTaskInput } from "./task.schema.js";
 
 import { ForbiddenError, NotFoundError } from "../../errors/app-error.js";
-import { getCachedTaskList, setCachedTaskList, TaskListCacheQuery,invalidateProjectTaskCache } from "../../cache/task.cache.js";
+import {
+  getCachedTaskList,
+  setCachedTaskList,
+  TaskListCacheQuery,
+  invalidateProjectTaskCache,
+} from "../../cache/task.cache.js";
 
-import {withCacheLock,} from "../../cache/cache-lock.js";
-import {getSocketServer,} from "../../realtime/socket-server.js";
+import { withCacheLock } from "../../cache/cache-lock.js";
+import { getSocketServer } from "../../realtime/socket-server.js";
 
-import {emitTaskCreated,emitTaskUpdated,
+import {
+  emitTaskCreated,
+  emitTaskUpdated,
   emitTaskDeleted,
 } from "../../realtime/task-events.js";
 async function getProjectAccess(projectId: string, userId: string) {
@@ -125,7 +132,7 @@ export async function createTask(
   userId: string,
   input: CreateTaskInput
 ) {
-  const { project } = await getProjectAccess(projectId, userId);
+  await getProjectAccess(projectId, userId);
 
   if (input.assigneeId) {
     const assignee = await prisma.projectMember.findUnique({
@@ -146,15 +153,17 @@ export async function createTask(
     data: {
       title: input.title,
       description: input.description,
+
       status: input.status ?? "TODO",
+
       priority: input.priority ?? "MEDIUM",
-  
+
       project: {
         connect: {
           id: projectId,
         },
       },
-  
+
       ...(input.assigneeId
         ? {
             assignee: {
@@ -166,33 +175,24 @@ export async function createTask(
         : {}),
     },
   });
-  
-  await invalidateProjectTaskCache(
-    projectId,
-  );
-  
-  return task;
-  await invalidateProjectTaskCache(
-    projectId,
-  );
+
+  await invalidateProjectTaskCache(projectId);
+
+  const io = getSocketServer();
+
+  if (io) {
+    emitTaskCreated(io, projectId, task);
+  }
+
   return task;
 }
-
 export async function getTasks(
   projectId: string,
   userId: string,
   page: number,
   limit: number,
-  status?:
-    | "BACKLOG"
-    | "TODO"
-    | "IN_PROGRESS"
-    | "REVIEW"
-    | "DONE",
-  priority?:
-    | "LOW"
-    | "MEDIUM"
-    | "HIGH",
+  status?: "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE",
+  priority?: "LOW" | "MEDIUM" | "HIGH",
   search?: string,
   sort:
     | "createdAt"
@@ -200,34 +200,21 @@ export async function getTasks(
     | "title"
     | "status"
     | "priority" = "createdAt",
-  order: "asc" | "desc" = "desc",
+  order: "asc" | "desc" = "desc"
 ) {
-  await getProjectAccess(
-    projectId,
-    userId,
-  );
+  await getProjectAccess(projectId, userId);
 
   const cacheQuery: TaskListCacheQuery = {
     page,
     limit,
-    ...(status !== undefined
-      ? { status }
-      : {}),
-    ...(priority !== undefined
-      ? { priority }
-      : {}),
-    ...(search
-      ? { search }
-      : {}),
+    ...(status !== undefined ? { status } : {}),
+    ...(priority !== undefined ? { priority } : {}),
+    ...(search ? { search } : {}),
     sort,
     order,
   };
 
-  const cached =
-    await getCachedTaskList(
-      projectId,
-      cacheQuery,
-    );
+  const cached = await getCachedTaskList(projectId, cacheQuery);
 
   if (cached) {
     return cached;
@@ -236,29 +223,20 @@ export async function getTasks(
   return withCacheLock(
     `tasks:${projectId}:${JSON.stringify(cacheQuery)}`,
     async () => {
-      const secondCheck =
-        await getCachedTaskList(
-          projectId,
-          cacheQuery,
-        );
+      const secondCheck = await getCachedTaskList(projectId, cacheQuery);
 
       if (secondCheck) {
         return secondCheck;
       }
 
-      const skip =
-        (page - 1) * limit;
+      const skip = (page - 1) * limit;
 
       const where = {
         projectId,
 
-        ...(status
-          ? { status }
-          : {}),
+        ...(status ? { status } : {}),
 
-        ...(priority
-          ? { priority }
-          : {}),
+        ...(priority ? { priority } : {}),
 
         ...(search
           ? {
@@ -281,69 +259,48 @@ export async function getTasks(
       };
 
       const orderByMap = {
-        createdAt: [
-          { createdAt: order },
-          { id: order },
-        ],
-        updatedAt: [
-          { updatedAt: order },
-          { id: order },
-        ],
-        title: [
-          { title: order },
-          { id: order },
-        ],
-        status: [
-          { status: order },
-          { id: order },
-        ],
-        priority: [
-          { priority: order },
-          { id: order },
-        ],
+        createdAt: [{ createdAt: order }, { id: order }],
+        updatedAt: [{ updatedAt: order }, { id: order }],
+        title: [{ title: order }, { id: order }],
+        status: [{ status: order }, { id: order }],
+        priority: [{ priority: order }, { id: order }],
       };
 
-      const orderBy =
-        orderByMap[sort];
+      const orderBy = orderByMap[sort];
 
-      const [tasks, total] =
-        await Promise.all([
-          prisma.task.findMany({
-            where,
+      const [tasks, total] = await Promise.all([
+        prisma.task.findMany({
+          where,
 
-            include: {
-              assignee: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
+          include: {
+            assignee: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
               },
             },
+          },
 
-            orderBy,
-            skip,
-            take: limit,
-          }),
+          orderBy,
+          skip,
+          take: limit,
+        }),
 
-          prisma.task.count({
-            where,
-          }),
-        ]);
+        prisma.task.count({
+          where,
+        }),
+      ]);
 
       const result = {
         tasks,
         total,
       };
 
-      await setCachedTaskList(
-        projectId,
-        cacheQuery,
-        result,
-      );
+      await setCachedTaskList(projectId, cacheQuery, result);
 
       return result;
-    },
+    }
   );
 }
 
@@ -375,36 +332,39 @@ export async function updateTask(
     }
   }
 
-  const updatedTask =
-    await prisma.task.update({
+  const updatedTask = await prisma.task.update({
     where: {
       id: taskId,
     },
+
     data: input,
   });
 
+  await invalidateProjectTaskCache(task.project.id);
 
-await invalidateProjectTaskCache(
-  task.project.id,
-);
+  const io = getSocketServer();
 
-return updatedTask;
+  if (io) {
+    emitTaskUpdated(io, task.project.id, updatedTask);
+  }
+
+  return updatedTask;
 }
 
 export async function deleteTask(taskId: string, userId: string) {
-  const { task } =
-  await getTaskWithAccess(
-    taskId,
-    userId,
-  );
+  const { task } = await getTaskWithAccess(taskId, userId);
 
-await prisma.task.delete({
-  where: {
-    id: taskId,
-  },
-});
+  await prisma.task.delete({
+    where: {
+      id: taskId,
+    },
+  });
 
-await invalidateProjectTaskCache(
-  task.project.id,
-);
+  await invalidateProjectTaskCache(task.project.id);
+
+  const io = getSocketServer();
+
+  if (io) {
+    emitTaskDeleted(io, task.project.id, taskId);
+  }
 }

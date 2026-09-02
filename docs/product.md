@@ -373,3 +373,22 @@ Day 15 — Observability
 ✅ Redis failure/recovery testing
 ✅ API resilience verified
 ✅ Frontend regression verified
+
+Day 16 — Real-Time Collaboration
+Added Socket.IO to the backend and frontend for real-time communication.
+Integrated Socket.IO with the existing Node.js HTTP server alongside Express.
+Implemented JWT-based WebSocket authentication using the existing access token.
+Added project-specific Socket.IO rooms with project membership authorization.
+Implemented project room join/leave lifecycle on the frontend.
+Added real-time task events:
+task:created
+task:updated
+task:deleted
+Integrated real-time events with the central WorkspaceProvider task state.
+Connected task mutations to Socket.IO so REST changes are broadcast to connected project members.
+Added idempotent task updates to prevent duplicate tasks when the initiating client receives its own event.
+Verified real-time synchronization across multiple browser tabs for task creation, updates, and deletion.
+Preserved PostgreSQL as the source of truth and Redis cache invalidation alongside real-time updates.
+Verified authenticated users can only receive events for projects they belong to.
+Added connection, authentication, room, and event logging for real-time observability.
+Completed end-to-end real-time task synchronization between project members.
