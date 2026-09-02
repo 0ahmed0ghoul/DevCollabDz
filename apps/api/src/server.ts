@@ -10,7 +10,8 @@ import { socketAuthMiddleware } from "./realtime/socket-auth.js";
 import { registerProjectRooms } from "./realtime/project-rooms.js";
 import { setSocketServer } from "./realtime/socket-server.js";
 
-const PORT = process.env.PORT || 5000;
+const PORT =
+  process.env["PORT"] || 5000;
 
 async function startServer() {
   try {
@@ -23,7 +24,7 @@ async function startServer() {
         {
           err: error,
         },
-        "Redis unavailable. Starting without cache."
+        "Redis unavailable. Starting without cache.",
       );
     }
 
@@ -31,29 +32,42 @@ async function startServer() {
      * Create ONE HTTP server.
      * Express and Socket.IO both use it.
      */
-    const httpServer = createServer(app);
+    const httpServer =
+      createServer(app);
 
     /*
      * Attach Socket.IO to the same
      * HTTP server.
      */
-    const io = new Server(httpServer, {
-      cors: {
-        origin: process.env.WEB_ORIGIN || "http://localhost:8080",
-        credentials: true,
-      },
-    });
-    
-    io.engine.on("connection_error", (error) => {
-      logger.error(
-        {
-          code: error.code,
-          message: error.message,
-          context: error.context,
+    const io = new Server(
+      httpServer,
+      {
+        cors: {
+          origin:
+            process.env["WEB_ORIGIN"] ||
+            "http://localhost:8080",
+          credentials: true,
         },
-        "Socket.IO engine connection error"
-      );
-    });
+      },
+    );
+
+    /*
+     * Engine.IO diagnostics.
+     */
+    io.engine.on(
+      "connection_error",
+      (error) => {
+        logger.error(
+          {
+            code: error.code,
+            message: error.message,
+            context: error.context,
+          },
+          "Socket.IO engine connection error",
+        );
+      },
+    );
+
     io.engine.on(
       "connection",
       (connection) => {
@@ -65,10 +79,10 @@ async function startServer() {
           },
           "Engine.IO connection established",
         );
-    
+
         connection.on(
           "close",
-          (reason) => {
+          (reason:string) => {
             logger.info(
               {
                 id: connection.id,
@@ -81,55 +95,110 @@ async function startServer() {
       },
     );
 
-    io.use(socketAuthMiddleware);
+    /*
+     * Socket.IO authentication.
+     */
+    io.use(
+      socketAuthMiddleware,
+    );
+
+    /*
+     * Project room handlers.
+     */
     registerProjectRooms(io);
+
+    /*
+     * Make the Socket.IO server
+     * available to task services.
+     */
     setSocketServer(io);
 
-    io.on("connect_error", (error) => {
-      logger.warn(
-        {
-          message: error.message,
-        },
-        "Socket.IO namespace connection error"
-      );
-    });
-
-    io.on("connection", (socket) => {
-      logger.info(
-        {
-          socketId: socket.id,
-        },
-        "WebSocket client connected"
-      );
-
-      socket.on("disconnect", (reason) => {
+    /*
+     * Namespace connection diagnostics.
+     */
+    io.on(
+      "connection",
+      (socket) => {
         logger.info(
           {
             socketId: socket.id,
-            reason,
+            userId:
+              socket.data.userId,
           },
-          "WebSocket client disconnected"
+          "WebSocket client connected",
         );
-      });
-    });
+
+        socket.on(
+          "disconnect",
+          (reason) => {
+            logger.info(
+              {
+                socketId:
+                  socket.id,
+                userId:
+                  socket.data.userId,
+                reason,
+              },
+              "WebSocket client disconnected",
+            );
+          },
+        );
+      },
+    );
+
+    io.engine.on(
+      "packet",
+      (packet) => {
+        logger.debug(
+          {
+            type: packet.type,
+            data:
+              typeof packet.data ===
+              "string"
+                ? packet.data.slice(
+                    0,
+                    100,
+                  )
+                : packet.data,
+          },
+          "Engine.IO packet received",
+        );
+      },
+    );
+
+    io.on(
+      "connect_error",
+      (error) => {
+        logger.warn(
+          {
+            message:
+              error.message,
+          },
+          "Socket.IO namespace connection error",
+        );
+      },
+    );
 
     /*
      * Start the HTTP server ONCE.
      */
-    httpServer.listen(PORT, () => {
-      logger.info(
-        {
-          port: PORT,
-        },
-        "DevCollab API running"
-      );
-    });
+    httpServer.listen(
+      PORT,
+      () => {
+        logger.info(
+          {
+            port: PORT,
+          },
+          "DevCollab API running",
+        );
+      },
+    );
   } catch (error) {
     logger.fatal(
       {
         err: error,
       },
-      "Failed to start server"
+      "Failed to start server",
     );
 
     process.exit(1);
