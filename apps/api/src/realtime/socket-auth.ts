@@ -7,7 +7,7 @@ interface AccessTokenPayload {
   userId: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "";
+const JWT_SECRET = process.env["JWT_SECRET"] ?? "";
 
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined");
@@ -20,7 +20,7 @@ function isAccessTokenPayload(value: unknown): value is AccessTokenPayload {
 
   const candidate = value as Record<string, unknown>;
 
-  return typeof candidate.userId === "string";
+  return typeof candidate["userId"] === "string";
 }
 
 export function socketAuthMiddleware(
@@ -30,26 +30,21 @@ export function socketAuthMiddleware(
   logger.info(
     {
       socketId: socket.id,
-      hasToken:
-        typeof socket.handshake.auth?.token ===
-        "string",
+      hasToken: typeof socket.handshake.auth?.["token"] === "string",
     },
-    "Socket handshake received",
+    "Socket handshake received"
   );
   logger.info(
     {
       socketId: socket.id,
-      hasAuth:
-        typeof socket.handshake.auth === "object",
-      hasToken:
-        typeof socket.handshake.auth?.token ===
-        "string",
+      hasAuth: typeof socket.handshake.auth === "object",
+      hasToken: typeof socket.handshake.auth?.["token"] === "string",
     },
-    "Socket authentication middleware reached",
+    "Socket authentication middleware reached"
   );
   try {
-    const token = socket.handshake.auth?.token;
-    logger.info(
+    const token =socket.handshake.auth?.["token"];
+        logger.info(
       {
         tokenReceived: typeof token === "string" && token.length > 0,
       },

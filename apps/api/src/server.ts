@@ -54,6 +54,32 @@ async function startServer() {
         "Socket.IO engine connection error"
       );
     });
+    io.engine.on(
+      "connection",
+      (connection) => {
+        logger.info(
+          {
+            id: connection.id,
+            transport:
+              connection.transport.name,
+          },
+          "Engine.IO connection established",
+        );
+    
+        connection.on(
+          "close",
+          (reason) => {
+            logger.info(
+              {
+                id: connection.id,
+                reason,
+              },
+              "Engine.IO connection closed",
+            );
+          },
+        );
+      },
+    );
 
     io.use(socketAuthMiddleware);
     registerProjectRooms(io);
