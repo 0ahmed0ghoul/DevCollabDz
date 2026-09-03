@@ -2,13 +2,14 @@ import type { Server } from "socket.io";
 
 import { logger } from "../utils/logger.js";
 import { projectRoom } from "./project-rooms.js";
+import { Task } from "@prisma/client";
 
 export interface TaskCreatedEvent {
-  task: unknown;
+  task: Task;
 }
 
 export interface TaskUpdatedEvent {
-  task: unknown;
+  task: Task;
 }
 
 export interface TaskDeletedEvent {
@@ -19,7 +20,7 @@ export interface TaskDeletedEvent {
 export function emitTaskCreated(
   io: Server,
   projectId: string,
-  task: unknown,
+  task: Task,
 ) {
   io.to(projectRoom(projectId)).emit(
     "task:created",
@@ -40,7 +41,7 @@ export function emitTaskCreated(
 export function emitTaskUpdated(
   io: Server,
   projectId: string,
-  task: unknown,
+  task: Task,
 ) {
   io.to(projectRoom(projectId)).emit(
     "task:updated",

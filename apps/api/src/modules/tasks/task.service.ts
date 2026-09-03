@@ -153,17 +153,15 @@ export async function createTask(
     data: {
       title: input.title,
       description: input.description,
-
       status: input.status ?? "TODO",
-
       priority: input.priority ?? "MEDIUM",
-
+  
       project: {
         connect: {
           id: projectId,
         },
       },
-
+  
       ...(input.assigneeId
         ? {
             assignee: {
@@ -173,6 +171,16 @@ export async function createTask(
             },
           }
         : {}),
+    },
+  
+    include: {
+      assignee: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 
@@ -332,12 +340,23 @@ export async function updateTask(
     }
   }
 
-  const updatedTask = await prisma.task.update({
+  const updatedTask =
+  await prisma.task.update({
     where: {
       id: taskId,
     },
 
     data: input,
+
+    include: {
+      assignee: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
   });
 
   await invalidateProjectTaskCache(task.project.id);
