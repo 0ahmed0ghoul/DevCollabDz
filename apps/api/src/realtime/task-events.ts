@@ -1,83 +1,64 @@
 import type { Server } from "socket.io";
 
-import { logger } from "../utils/logger.js";
-import { projectRoom } from "./project-rooms.js";
-import { Task } from "@prisma/client";
+import type { Task } from "@prisma/client";
 
-export interface TaskCreatedEvent {
-  task: Task;
-}
-
-export interface TaskUpdatedEvent {
-  task: Task;
-}
-
-export interface TaskDeletedEvent {
-  taskId: string;
-  projectId: string;
-}
+import {
+  dispatchRealtimeEvent,
+} from "./realtime-dispatcher.js";
 
 export function emitTaskCreated(
   io: Server,
   projectId: string,
+  actorId: string,
   task: Task,
 ) {
-  io.to(projectRoom(projectId)).emit(
-    "task:created",
+  return dispatchRealtimeEvent(
+    io,
     {
-      task,
-    } satisfies TaskCreatedEvent,
-  );
-
-  logger.info(
-    {
+      type: "task.created",
       projectId,
-      event: "task:created",
+      actorId,
+      data: {
+        task,
+      },
     },
-    "Task event emitted",
   );
 }
 
 export function emitTaskUpdated(
   io: Server,
   projectId: string,
+  actorId: string,
   task: Task,
 ) {
-  io.to(projectRoom(projectId)).emit(
-    "task:updated",
+  return dispatchRealtimeEvent(
+    io,
     {
-      task,
-    } satisfies TaskUpdatedEvent,
-  );
-
-  logger.info(
-    {
+      type: "task.updated",
       projectId,
-      event: "task:updated",
+      actorId,
+      data: {
+        task,
+      },
     },
-    "Task event emitted",
   );
 }
 
 export function emitTaskDeleted(
   io: Server,
   projectId: string,
+  actorId: string,
   taskId: string,
 ) {
-  io.to(projectRoom(projectId)).emit(
-    "task:deleted",
+  return dispatchRealtimeEvent(
+    io,
     {
-      taskId,
+      type: "task.deleted",
       projectId,
-    } satisfies TaskDeletedEvent,
-  );
-
-  logger.info(
-    {
-      projectId,
-      taskId,
-      event: "task:deleted",
+      actorId,
+      data: {
+        taskId,
+      },
     },
-    "Task event emitted",
   );
 }

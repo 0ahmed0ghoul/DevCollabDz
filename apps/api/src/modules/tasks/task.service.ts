@@ -189,7 +189,12 @@ export async function createTask(
   const io = getSocketServer();
 
   if (io) {
-    emitTaskCreated(io, projectId, task);
+    emitTaskCreated(
+      io,
+      projectId,
+      userId,
+      task,
+    );
   }
 
   return task;
@@ -364,7 +369,12 @@ export async function updateTask(
   const io = getSocketServer();
 
   if (io) {
-    emitTaskUpdated(io, task.project.id, updatedTask);
+    emitTaskUpdated(
+      io,
+      task.project.id,
+      userId,
+      updatedTask,
+    );
   }
 
   return updatedTask;
@@ -384,6 +394,11 @@ export async function deleteTask(taskId: string, userId: string) {
   const io = getSocketServer();
 
   if (io) {
-    emitTaskDeleted(io, task.project.id, taskId);
+    emitTaskDeleted(
+      io,
+      task.project.id,
+      userId,
+      taskId,
+    );
   }
 }
