@@ -189,7 +189,7 @@ export async function createTask(
     },
     "Publishing task.created application event",
   );
-  eventBus.emit("task.created", {
+  await eventBus.emit("task.created", {
     projectId,
     actorId: userId,
     task,
@@ -362,7 +362,7 @@ export async function updateTask(
   });
 
   await invalidateProjectTaskCache(task.project.id);
-  eventBus.emit("task.updated", {
+  await eventBus.emit("task.updated", {
     projectId: task.project.id,
     actorId: userId,
     task: updatedTask,
@@ -382,7 +382,7 @@ export async function deleteTask(taskId: string, userId: string) {
   });
 
   await invalidateProjectTaskCache(task.project.id);
-  eventBus.emit("task.deleted", {
+  await eventBus.emit("task.deleted", {
     projectId: task.project.id,
     actorId: userId,
     taskId,

@@ -3,42 +3,43 @@ import { eventBus } from "../events/event-bus.js";
 import { dispatchRealtimeEvent } from "./realtime-dispatcher.js";
 
 export function registerRealtimeEventHandlers(): void {
-    console.log("✅ Registering realtime event handlers");
-    eventBus.on("task.created", (event) => {
-        console.log("🔥 HANDLER RECEIVED task.created", {
-          projectId: event.projectId,
-          actorId: event.actorId,
-          taskId: (event.task as Task).id,
-        });
-      
-        dispatchRealtimeEvent({
+  console.log("✅ Registering realtime event handlers");
+
+  eventBus.on("task.created", (event) => {
+    dispatchRealtimeEvent({
+      eventId: event.eventId,
+      timestamp: event.timestamp,
       type: "task.created",
-      projectId: event.projectId,
-      actorId: event.actorId,
+      projectId: event.data.projectId,
+      actorId: event.data.actorId,
       data: {
-        task: event.task as Task,
+        task: event.data.task as Task,
       },
     });
   });
 
   eventBus.on("task.updated", (event) => {
     dispatchRealtimeEvent({
+      eventId: event.eventId,
+      timestamp: event.timestamp,
       type: "task.updated",
-      projectId: event.projectId,
-      actorId: event.actorId,
+      projectId: event.data.projectId,
+      actorId: event.data.actorId,
       data: {
-        task: event.task as Task,
+        task: event.data.task as Task,
       },
     });
   });
 
   eventBus.on("task.deleted", (event) => {
     dispatchRealtimeEvent({
+      eventId: event.eventId,
+      timestamp: event.timestamp,
       type: "task.deleted",
-      projectId: event.projectId,
-      actorId: event.actorId,
+      projectId: event.data.projectId,
+      actorId: event.data.actorId,
       data: {
-        taskId: event.taskId,
+        taskId: event.data.taskId,
       },
     });
   });

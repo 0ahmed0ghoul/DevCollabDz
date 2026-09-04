@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type {
   RealtimeEvent,
   RealtimeEventType,
@@ -8,6 +7,8 @@ import { getSocketServer } from "./socket-server.js";
 import { logger } from "../utils/logger.js";
 
 interface DispatchRealtimeEventInput<TData> {
+  eventId: string;
+  timestamp: string;
   type: RealtimeEventType;
   projectId: string;
   actorId: string;
@@ -21,9 +22,9 @@ export function dispatchRealtimeEvent<TData>(
     RealtimeEventType,
     TData
   > = {
-    eventId: randomUUID(),
+    eventId: input.eventId,
     type: input.type,
-    timestamp: new Date().toISOString(),
+    timestamp: input.timestamp,
     projectId: input.projectId,
     actorId: input.actorId,
     data: input.data,
