@@ -9,7 +9,7 @@ import { logger } from "./utils/logger.js";
 import { socketAuthMiddleware } from "./realtime/socket-auth.js";
 import { registerProjectRooms } from "./realtime/project-rooms.js";
 import { setSocketServer } from "./realtime/socket-server.js";
-
+import { registerRealtimeEventHandlers } from "./realtime/realtime-event-handlers.js";
 const PORT =
   process.env["PORT"] || 5000;
 
@@ -113,6 +113,13 @@ async function startServer() {
      */
     setSocketServer(io);
 
+  /*  
+  Register event handlers for
+  application events that should
+  be dispatched to clients in
+  real-time.
+  */
+    registerRealtimeEventHandlers();
     /*
      * Namespace connection diagnostics.
      */

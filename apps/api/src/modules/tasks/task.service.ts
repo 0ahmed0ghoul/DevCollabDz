@@ -11,12 +11,9 @@ import {
 } from "../../cache/task.cache.js";
 
 import { withCacheLock } from "../../cache/cache-lock.js";
+import { eventBus } from "../../events/event-bus.js";
+import { logger } from "../../utils/logger.js";
 
-import {
-  emitTaskCreated,
-  emitTaskUpdated,
-  emitTaskDeleted,
-} from "../../realtime/task-events.js";
 async function getProjectAccess(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: {
@@ -184,8 +181,19 @@ export async function createTask(
   });
 
   await invalidateProjectTaskCache(projectId);
-  emitTaskCreated(projectId, userId, task);
-
+  logger.info(
+    {
+      projectId,
+      actorId: userId,
+      taskId: task.id,
+    },
+    "Publishing task.created application event",
+  );
+  eventBus.emit("task.created", {
+    projectId,
+    actorId: userId,
+    task,
+  });
   return task;
 }
 export async function getTasks(
@@ -354,11 +362,11 @@ export async function updateTask(
   });
 
   await invalidateProjectTaskCache(task.project.id);
-  emitTaskUpdated(
-    task.project.id,
-    userId,
-    updatedTask,
-  );
+  eventBus.emit("task.updated", {
+    projectId: task.project.id,
+    actorId: userId,
+    task: updatedTask,
+  });
 
 
   return updatedTask;
@@ -374,10 +382,10 @@ export async function deleteTask(taskId: string, userId: string) {
   });
 
   await invalidateProjectTaskCache(task.project.id);
-  emitTaskDeleted(
-    task.project.id,
-    userId,
+  eventBus.emit("task.deleted", {
+    projectId: task.project.id,
+    actorId: userId,
     taskId,
-  );
+  });
   
 }
