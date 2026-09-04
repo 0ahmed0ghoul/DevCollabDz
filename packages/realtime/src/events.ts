@@ -27,19 +27,17 @@ export interface TaskDeletedData {
   taskId: string;
 }
 
-export type TaskCreatedEvent<
-  TTask = unknown,
-> = RealtimeEvent<
-  "task.created",
-  TaskCreatedData<TTask>
->;
+export type TaskCreatedEvent<TTask = unknown> =
+  RealtimeEvent<
+    "task.created",
+    TaskCreatedData<TTask>
+  >;
 
-export type TaskUpdatedEvent<
-  TTask = unknown,
-> = RealtimeEvent<
-  "task.updated",
-  TaskUpdatedData<TTask>
->;
+export type TaskUpdatedEvent<TTask = unknown> =
+  RealtimeEvent<
+    "task.updated",
+    TaskUpdatedData<TTask>
+  >;
 
 export type TaskDeletedEvent =
   RealtimeEvent<

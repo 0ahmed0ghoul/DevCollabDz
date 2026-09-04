@@ -11,7 +11,6 @@ import {
 } from "../../cache/task.cache.js";
 
 import { withCacheLock } from "../../cache/cache-lock.js";
-import { getSocketServer } from "../../realtime/socket-server.js";
 
 import {
   emitTaskCreated,
@@ -185,17 +184,7 @@ export async function createTask(
   });
 
   await invalidateProjectTaskCache(projectId);
-
-  const io = getSocketServer();
-
-  if (io) {
-    emitTaskCreated(
-      io,
-      projectId,
-      userId,
-      task,
-    );
-  }
+  emitTaskCreated(projectId, userId, task);
 
   return task;
 }
@@ -365,17 +354,12 @@ export async function updateTask(
   });
 
   await invalidateProjectTaskCache(task.project.id);
+  emitTaskUpdated(
+    task.project.id,
+    userId,
+    updatedTask,
+  );
 
-  const io = getSocketServer();
-
-  if (io) {
-    emitTaskUpdated(
-      io,
-      task.project.id,
-      userId,
-      updatedTask,
-    );
-  }
 
   return updatedTask;
 }
@@ -390,15 +374,10 @@ export async function deleteTask(taskId: string, userId: string) {
   });
 
   await invalidateProjectTaskCache(task.project.id);
-
-  const io = getSocketServer();
-
-  if (io) {
-    emitTaskDeleted(
-      io,
-      task.project.id,
-      userId,
-      taskId,
-    );
-  }
+  emitTaskDeleted(
+    task.project.id,
+    userId,
+    taskId,
+  );
+  
 }
