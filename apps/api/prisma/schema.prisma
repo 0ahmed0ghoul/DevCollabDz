@@ -120,3 +120,19 @@ model Task {
   @@index([projectId, createdAt])
   @@index([projectId, updatedAt])
 }
+
+model ApplicationEvent {
+  id        String   @id @default(cuid())
+  eventId   String   @unique
+  type      String
+  timestamp DateTime
+  projectId String?
+  actorId   String?
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([projectId])
+  @@index([actorId])
+  @@index([timestamp])
+}

@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import { logger } from "../utils/logger.js";
-
+import { persistApplicationEvent } from "./event-store.js";
 export interface ApplicationEventMetadata {
   eventId: string;
   timestamp: string;
@@ -40,6 +40,13 @@ type EventHandler<T> = (
 class ApplicationEventBus {
   private readonly emitter = new EventEmitter();
 
+  createMetadata(): ApplicationEventMetadata {
+    return {
+      eventId: randomUUID(),
+      timestamp: new Date().toISOString(),
+    };
+  }
+  
   on<K extends keyof ApplicationEventMap>(
     eventName: K,
     handler: EventHandler<ApplicationEvent<K>>,
@@ -58,28 +65,51 @@ class ApplicationEventBus {
     eventName: K,
     data: ApplicationEventMap[K],
   ): Promise<void> {
-    const event: ApplicationEvent<K> = {
+    const event = this.create(eventName, data);
+  
+    await persistApplicationEvent({
+      eventId: event.eventId,
+      type: event.type,
+      timestamp: new Date(event.timestamp),
+      projectId: event.data.projectId,
+      actorId: event.data.actorId,
+      data: event.data,
+    });
+  
+    await this.publish(event);
+  }
+
+  create<K extends keyof ApplicationEventMap>(
+    eventName: K,
+    data: ApplicationEventMap[K],
+  ): ApplicationEvent<K> {
+    return {
       eventId: randomUUID(),
       timestamp: new Date().toISOString(),
       type: eventName,
       data,
     };
-
+  }
+  async publish<K extends keyof ApplicationEventMap>(
+    event: ApplicationEvent<K>,
+  ): Promise<void> {
     logger.debug(
       {
         eventId: event.eventId,
         eventType: event.type,
       },
-      "Application event emitted",
+      "Application event published",
     );
-
+  
     const handlers = this.emitter
-      .listeners(eventName) as EventHandler<ApplicationEvent<K>>[];
-
+      .listeners(event.type) as EventHandler<
+      ApplicationEvent<K>
+    >[];
+  
     const results = await Promise.allSettled(
       handlers.map((handler) => handler(event)),
     );
-
+  
     for (const result of results) {
       if (result.status === "rejected") {
         logger.error(

@@ -9,7 +9,7 @@ import {
   TaskListCacheQuery,
   invalidateProjectTaskCache,
 } from "../../cache/task.cache.js";
-
+import { persistApplicationEvent } from "../../events/event-store.js";
 import { withCacheLock } from "../../cache/cache-lock.js";
 import { eventBus } from "../../events/event-bus.js";
 import { logger } from "../../utils/logger.js";
@@ -145,56 +145,81 @@ export async function createTask(
     }
   }
 
-  const task = await prisma.task.create({
-    data: {
-      title: input.title,
-      description: input.description,
-      status: input.status ?? "TODO",
-      priority: input.priority ?? "MEDIUM",
-  
-      project: {
-        connect: {
-          id: projectId,
-        },
-      },
-  
-      ...(input.assigneeId
-        ? {
-            assignee: {
-              connect: {
-                id: input.assigneeId,
-              },
-            },
-          }
-        : {}),
-    },
-  
-    include: {
-      assignee: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
-  });
-
-  await invalidateProjectTaskCache(projectId);
-  logger.info(
-    {
-      projectId,
-      actorId: userId,
-      taskId: task.id,
-    },
-    "Publishing task.created application event",
-  );
-  await eventBus.emit("task.created", {
+  const event = eventBus.create("task.created", {
     projectId,
     actorId: userId,
-    task,
+    task: null,
   });
-  return task;
+  const metadata = eventBus.createMetadata();
+  const task = await prisma.$transaction(async (tx) => {
+    const createdTask = await tx.task.create({
+      data: {
+        title: input.title,
+        description: input.description,
+        status: input.status ?? "TODO",
+        priority: input.priority ?? "MEDIUM",
+  
+        project: {
+          connect: {
+            id: projectId,
+          },
+        },
+  
+        ...(input.assigneeId
+          ? {
+              assignee: {
+                connect: {
+                  id: input.assigneeId,
+                },
+              },
+            }
+          : {}),
+      },
+  
+      include: {
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+  
+    const event = {
+      ...metadata,
+      type: "task.created" as const,
+      data: {
+        projectId,
+        actorId: userId,
+        task: createdTask,
+      },
+    };
+  
+    await persistApplicationEvent(
+      {
+        eventId: event.eventId,
+        type: event.type,
+        timestamp: new Date(event.timestamp),
+        projectId: event.data.projectId,
+        actorId: event.data.actorId,
+        data: event.data,
+      },
+      tx,
+    );
+  
+    return {
+      task: createdTask,
+      event,
+    };
+  });
+  
+  await invalidateProjectTaskCache(projectId);
+  
+  await eventBus.publish(task.event);
+  
+  return task.task;
 }
 export async function getTasks(
   projectId: string,
