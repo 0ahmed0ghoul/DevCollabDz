@@ -11,6 +11,7 @@ import { registerProjectRooms } from "./realtime/project-rooms.js";
 import { setSocketServer } from "./realtime/socket-server.js";
 import { registerRealtimeEventHandlers } from "./realtime/realtime-event-handlers.js";
 import { registerAuditEventHandlers } from "./events/audit-event-handlers.js";
+import { startOutboxProcessor } from "./events/outbox-processor.js";
 const PORT =
   process.env["PORT"] || 5000;
 
@@ -121,7 +122,13 @@ async function startServer() {
   real-time.
   */
     registerRealtimeEventHandlers();
-    
+
+    /*
+     * Start the outbox processor
+     * to handle application events
+     * and dispatch them to clients.
+     */
+    startOutboxProcessor();
 
 
     registerAuditEventHandlers();

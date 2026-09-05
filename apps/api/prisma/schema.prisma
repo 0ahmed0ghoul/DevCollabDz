@@ -121,6 +121,13 @@ model Task {
   @@index([projectId, updatedAt])
 }
 
+enum ApplicationEventStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
 model ApplicationEvent {
   id        String   @id @default(cuid())
   eventId   String   @unique
@@ -129,10 +136,20 @@ model ApplicationEvent {
   projectId String?
   actorId   String?
   data      Json
+
+  status        ApplicationEventStatus @default(PENDING)
+  attempts      Int                    @default(0)
+  lastError     String?
+  nextAttemptAt DateTime?
+  processedAt   DateTime?
+
   createdAt DateTime @default(now())
 
+  @@index([status])
+  @@index([status, nextAttemptAt])
   @@index([type])
   @@index([projectId])
   @@index([actorId])
   @@index([timestamp])
+  @@index([createdAt])
 }
