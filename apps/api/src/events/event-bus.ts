@@ -33,12 +33,51 @@ export type ApplicationEvent<K extends keyof ApplicationEventMap> =
     data: ApplicationEventMap[K];
   };
 
-type EventHandler<T> = (
-  event: T,
-) => void | Promise<void>;
+type EventHandler<T> = (event: T) => void | Promise<void>;
 
 class ApplicationEventBus {
   private readonly emitter = new EventEmitter();
+
+  private async executeHandler<T>(
+    handler: EventHandler<T>,
+    event: T,
+    eventName: string | number | symbol,
+    eventId: string
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= MAX_HANDLER_ATTEMPTS; attempt++) {
+      try {
+        await handler(event);
+        return;
+      } catch (error) {
+        if (attempt === MAX_HANDLER_ATTEMPTS) {
+          logger.error(
+            {
+              eventId,
+              eventType: String(eventName),
+              attempt,
+              error,
+            },
+            "Application event handler permanently failed"
+          );
+
+          return;
+        }
+
+        logger.warn(
+          {
+            eventId,
+            eventType: String(eventName),
+            attempt,
+            nextAttempt: attempt + 1,
+            error,
+          },
+          "Application event handler failed, retrying"
+        );
+
+        await sleep(RETRY_DELAY_MS * attempt);
+      }
+    }
+  }
 
   createMetadata(): ApplicationEventMetadata {
     return {
@@ -46,27 +85,27 @@ class ApplicationEventBus {
       timestamp: new Date().toISOString(),
     };
   }
-  
+
   on<K extends keyof ApplicationEventMap>(
     eventName: K,
-    handler: EventHandler<ApplicationEvent<K>>,
+    handler: EventHandler<ApplicationEvent<K>>
   ): void {
     this.emitter.on(eventName, handler);
   }
 
   off<K extends keyof ApplicationEventMap>(
     eventName: K,
-    handler: EventHandler<ApplicationEvent<K>>,
+    handler: EventHandler<ApplicationEvent<K>>
   ): void {
     this.emitter.off(eventName, handler);
   }
 
   async emit<K extends keyof ApplicationEventMap>(
     eventName: K,
-    data: ApplicationEventMap[K],
+    data: ApplicationEventMap[K]
   ): Promise<void> {
     const event = this.create(eventName, data);
-  
+
     await persistApplicationEvent({
       eventId: event.eventId,
       type: event.type,
@@ -75,13 +114,13 @@ class ApplicationEventBus {
       actorId: event.data.actorId,
       data: event.data,
     });
-  
+
     await this.publish(event);
   }
 
   create<K extends keyof ApplicationEventMap>(
     eventName: K,
-    data: ApplicationEventMap[K],
+    data: ApplicationEventMap[K]
   ): ApplicationEvent<K> {
     return {
       eventId: randomUUID(),
@@ -91,38 +130,39 @@ class ApplicationEventBus {
     };
   }
   async publish<K extends keyof ApplicationEventMap>(
-    event: ApplicationEvent<K>,
+    event: ApplicationEvent<K>
   ): Promise<void> {
     logger.debug(
       {
         eventId: event.eventId,
         eventType: event.type,
       },
-      "Application event published",
+      "Application event published"
     );
-  
-    const handlers = this.emitter
-      .listeners(event.type) as EventHandler<
+
+    const handlers = this.emitter.listeners(event.type) as EventHandler<
       ApplicationEvent<K>
     >[];
-  
-    const results = await Promise.allSettled(
-      handlers.map((handler) => handler(event)),
+
+    await Promise.all(
+      handlers.map((handler) =>
+        this.executeHandler(
+          handler,
+          event,
+          event.type,
+          event.eventId,
+        ),
+      ),
     );
-  
-    for (const result of results) {
-      if (result.status === "rejected") {
-        logger.error(
-          {
-            eventId: event.eventId,
-            eventType: event.type,
-            error: result.reason,
-          },
-          "Application event handler failed",
-        );
-      }
-    }
   }
+}
+const MAX_HANDLER_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 250;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 export const eventBus = new ApplicationEventBus();

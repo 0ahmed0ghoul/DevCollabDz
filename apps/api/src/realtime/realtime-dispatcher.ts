@@ -46,11 +46,30 @@ export function dispatchRealtimeEvent<TData>(
     return event;
   }
 
-  io.to(projectRoom(input.projectId)).emit(
+  const room = projectRoom(input.projectId);
+  const roomSockets =
+    io.sockets.adapter.rooms.get(room);
+  
+  logger.info(
+    {
+      eventId: event.eventId,
+      eventType: event.type,
+      projectId: event.projectId,
+      actorId: event.actorId,
+      room,
+      roomSize: roomSockets?.size ?? 0,
+      socketIds: roomSockets
+        ? Array.from(roomSockets)
+        : [],
+    },
+    "Realtime room dispatch",
+  );
+  
+  io.to(room).emit(
     input.type,
     event,
   );
-
+  
   logger.info(
     {
       eventId: event.eventId,

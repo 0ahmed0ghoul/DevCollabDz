@@ -432,3 +432,16 @@ Day 19 status
 ✅ Task service completely decoupled from Socket.IO
 ✅ Create/update/delete runtime verification
 ✅ API TypeScript passes
+
+Day 20 delivered
+
+✅ Persistent application-event history
+✅ Unique event IDs
+✅ Atomic task + event persistence
+✅ Create/update/delete covered
+✅ Publish only after database commit
+✅ Async subscriber handling
+✅ Independent subscriber retries
+✅ Failure isolation
+✅ Realtime + audit verification
+✅ TypeScript passes

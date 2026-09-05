@@ -366,51 +366,109 @@ export async function updateTask(
       throw new ForbiddenError("Assignee is not a member of this project");
     }
   }
-
-  const updatedTask =
-  await prisma.task.update({
-    where: {
-      id: taskId,
-    },
-
-    data: input,
-
-    include: {
-      assignee: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
+    const metadata = eventBus.createMetadata();
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedTask = await tx.task.update({
+        where: {
+          id: taskId,
         },
-      },
-    },
-  });
-
-  await invalidateProjectTaskCache(task.project.id);
-  await eventBus.emit("task.updated", {
-    projectId: task.project.id,
-    actorId: userId,
-    task: updatedTask,
-  });
-
-
-  return updatedTask;
+    
+        data: input,
+    
+        include: {
+          assignee: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+    
+      const event = {
+        ...metadata,
+        type: "task.updated" as const,
+        data: {
+          projectId: task.project.id,
+          actorId: userId,
+          task: updatedTask,
+        },
+      };
+    
+      await persistApplicationEvent(
+        {
+          eventId: event.eventId,
+          type: event.type,
+          timestamp: new Date(event.timestamp),
+          projectId: event.data.projectId,
+          actorId: event.data.actorId,
+          data: event.data,
+        },
+        tx,
+      );
+    
+      return {
+        task: updatedTask,
+        event,
+      };
+    });
+    
+    await invalidateProjectTaskCache(task.project.id);
+    
+    await eventBus.publish(result.event);
+    
+    return result.task;
 }
 
-export async function deleteTask(taskId: string, userId: string) {
-  const { task } = await getTaskWithAccess(taskId, userId);
-
-  await prisma.task.delete({
-    where: {
-      id: taskId,
-    },
-  });
-
-  await invalidateProjectTaskCache(task.project.id);
-  await eventBus.emit("task.deleted", {
-    projectId: task.project.id,
-    actorId: userId,
+export async function deleteTask(
+  taskId: string,
+  userId: string,
+) {
+  const { task } = await getTaskWithAccess(
     taskId,
-  });
-  
+    userId,
+  );
+
+  const metadata = eventBus.createMetadata();
+
+  const result = await prisma.$transaction(
+    async (tx) => {
+      await tx.task.delete({
+        where: {
+          id: taskId,
+        },
+      });
+
+      const event = {
+        ...metadata,
+        type: "task.deleted" as const,
+        data: {
+          projectId: task.project.id,
+          actorId: userId,
+          taskId,
+        },
+      };
+
+      await persistApplicationEvent(
+        {
+          eventId: event.eventId,
+          type: event.type,
+          timestamp: new Date(event.timestamp),
+          projectId: event.data.projectId,
+          actorId: event.data.actorId,
+          data: event.data,
+        },
+        tx,
+      );
+
+      return event;
+    },
+  );
+
+  await invalidateProjectTaskCache(
+    task.project.id,
+  );
+
+  await eventBus.publish(result);
 }
