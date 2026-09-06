@@ -215,10 +215,7 @@ export async function createTask(
     };
   });
   
-  await invalidateProjectTaskCache(projectId);
-  
-  await eventBus.publish(task.event);
-  
+  await invalidateProjectTaskCache(projectId);  
   return task.task;
 }
 export async function getTasks(
@@ -414,10 +411,7 @@ export async function updateTask(
       };
     });
     
-    await invalidateProjectTaskCache(task.project.id);
-    
-    await eventBus.publish(result.event);
-    
+    await invalidateProjectTaskCache(task.project.id);    
     return result.task;
 }
 
@@ -469,6 +463,4 @@ export async function deleteTask(
   await invalidateProjectTaskCache(
     task.project.id,
   );
-
-  await eventBus.publish(result);
 }

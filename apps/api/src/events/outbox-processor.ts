@@ -1,6 +1,13 @@
 import { prisma } from "../database/prisma.js";
 import { eventBus } from "./event-bus.js";
 import { logger } from "../utils/logger.js";
+import {
+  outboxPendingEvents,
+  outboxProcessedTotal,
+  outboxFailedTotal,
+  outboxProcessingDuration,
+} from "../metrics/metrics.js";
+
 import type {
     ApplicationEvent,
     ApplicationEventMap,
@@ -12,7 +19,7 @@ const POLL_INTERVAL_MS = 1000;
 let processorRunning = false;
 
 async function processPendingEvents(): Promise<void> {
-  const events = await prisma.applicationEvent.findMany({
+  const pendingCount = await prisma.applicationEvent.count({
     where: {
       status: "PENDING",
       OR: [
@@ -20,11 +27,10 @@ async function processPendingEvents(): Promise<void> {
         { nextAttemptAt: { lte: new Date() } },
       ],
     },
-    orderBy: {
-      createdAt: "asc",
-    },
-    take: BATCH_SIZE,
   });
+  
+  outboxPendingEvents.set(pendingCount);
+  
 
   for (const storedEvent of events) {
     const claimed = await prisma.applicationEvent.updateMany({
@@ -53,6 +59,7 @@ switch (storedEvent.type) {
       type: "task.created",
       data: storedEvent.data as ApplicationEventMap["task.created"],
     };
+    const startedAt = process.hrtime.bigint();
 
     await eventBus.publish(event);
     break;
