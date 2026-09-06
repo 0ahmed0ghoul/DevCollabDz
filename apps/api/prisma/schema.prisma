@@ -126,6 +126,7 @@ enum ApplicationEventStatus {
   PROCESSING
   PROCESSED
   FAILED
+  DEAD_LETTER
 }
 
 model ApplicationEvent {

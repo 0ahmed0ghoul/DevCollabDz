@@ -42,12 +42,16 @@ class ApplicationEventBus {
     handler: EventHandler<T>,
     event: T,
     eventName: string | number | symbol,
-    eventId: string
-  ): Promise<void> {
-    for (let attempt = 1; attempt <= MAX_HANDLER_ATTEMPTS; attempt++) {
+    eventId: string,
+  ): Promise<boolean> {
+    for (
+      let attempt = 1;
+      attempt <= MAX_HANDLER_ATTEMPTS;
+      attempt++
+    ) {
       try {
         await handler(event);
-        return;
+        return true;
       } catch (error) {
         if (attempt === MAX_HANDLER_ATTEMPTS) {
           logger.error(
@@ -57,12 +61,12 @@ class ApplicationEventBus {
               attempt,
               error,
             },
-            "Application event handler permanently failed"
+            "Application event handler permanently failed",
           );
-
-          return;
+  
+          return false;
         }
-
+  
         logger.warn(
           {
             eventId,
@@ -71,13 +75,54 @@ class ApplicationEventBus {
             nextAttempt: attempt + 1,
             error,
           },
-          "Application event handler failed, retrying"
+          "Application event handler failed, retrying",
         );
-
+  
         await sleep(RETRY_DELAY_MS * attempt);
       }
     }
+  
+    return false;
   }
+  
+  async publish<K extends keyof ApplicationEventMap>(
+    event: ApplicationEvent<K>,
+  ): Promise<void> {
+    logger.debug(
+      {
+        eventId: event.eventId,
+        eventType: event.type,
+      },
+      "Application event published",
+    );
+  
+    const handlers = this.emitter
+      .listeners(event.type) as EventHandler<
+      ApplicationEvent<K>
+    >[];
+  
+    const results = await Promise.all(
+      handlers.map((handler) =>
+        this.executeHandler(
+          handler,
+          event,
+          event.type,
+          event.eventId,
+        ),
+      ),
+    );
+  
+    const failedHandlers = results.filter(
+      (success) => !success,
+    ).length;
+  
+    if (failedHandlers > 0) {
+      throw new Error(
+        `${failedHandlers} application event handler(s) failed`,
+      );
+    }
+  }
+  
 
   createMetadata(): ApplicationEventMetadata {
     return {
@@ -129,32 +174,7 @@ class ApplicationEventBus {
       data,
     };
   }
-  async publish<K extends keyof ApplicationEventMap>(
-    event: ApplicationEvent<K>
-  ): Promise<void> {
-    logger.debug(
-      {
-        eventId: event.eventId,
-        eventType: event.type,
-      },
-      "Application event published"
-    );
 
-    const handlers = this.emitter.listeners(event.type) as EventHandler<
-      ApplicationEvent<K>
-    >[];
-
-    await Promise.all(
-      handlers.map((handler) =>
-        this.executeHandler(
-          handler,
-          event,
-          event.type,
-          event.eventId,
-        ),
-      ),
-    );
-  }
 }
 const MAX_HANDLER_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 250;

@@ -445,3 +445,19 @@ Day 20 delivered
 ✅ Failure isolation
 ✅ Realtime + audit verification
 ✅ TypeScript passes
+
+Day 21 
+
+✅ Transactional Outbox
+✅ Persistent events
+✅ Atomic task + event commits
+✅ Background processor
+✅ Event claiming
+✅ Event Bus publishing
+✅ Subscriber retries
+✅ Outbox retries
+✅ Exponential backoff
+✅ Dead-letter events
+✅ Metrics
+✅ Crash recovery
+✅ Failure isolation
