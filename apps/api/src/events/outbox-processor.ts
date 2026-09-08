@@ -14,59 +14,63 @@ import type {
   ApplicationEventMap,
 } from "./event-bus.js";
 
-const BATCH_SIZE = 20;
+import { claimPendingEvents } from "./outbox-store.js";
+
 const POLL_INTERVAL_MS = 1000;
 const MAX_OUTBOX_ATTEMPTS = 5;
+const PROCESSING_TIMEOUT_MS = 30_000;
 
 let processorRunning = false;
+
+async function recoverStuckEvents(): Promise<void> {
+  const cutoff = new Date(
+    Date.now() - PROCESSING_TIMEOUT_MS,
+  );
+
+  const result = await prisma.applicationEvent.updateMany({
+    where: {
+      status: "PROCESSING",
+      processingStartedAt: {
+        lt: cutoff,
+      },
+    },
+    data: {
+      status: "PENDING",
+      processingStartedAt: null,
+      nextAttemptAt: new Date(),
+    },
+  });
+
+  if (result.count > 0) {
+    logger.warn(
+      {
+        recoveredEvents: result.count,
+        timeoutMs: PROCESSING_TIMEOUT_MS,
+      },
+      "Recovered stuck outbox events",
+    );
+  }
+}
 
 async function processPendingEvents(): Promise<void> {
   const now = new Date();
 
-  const pendingCount = await prisma.applicationEvent.count({
-    where: {
-      status: "PENDING",
-      OR: [
-        { nextAttemptAt: null },
-        { nextAttemptAt: { lte: now } },
-      ],
-    },
-  });
-
-  outboxPendingEvents.set(pendingCount);
-
-  const events = await prisma.applicationEvent.findMany({
-    where: {
-      status: "PENDING",
-      OR: [
-        { nextAttemptAt: null },
-        { nextAttemptAt: { lte: now } },
-      ],
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-    take: BATCH_SIZE,
-  });
-
-  for (const storedEvent of events) {
-    const claimed = await prisma.applicationEvent.updateMany({
+  const pendingCount =
+    await prisma.applicationEvent.count({
       where: {
-        id: storedEvent.id,
         status: "PENDING",
-      },
-      data: {
-        status: "PROCESSING",
-        attempts: {
-          increment: 1,
-        },
+        OR: [
+          { nextAttemptAt: null },
+          { nextAttemptAt: { lte: now } },
+        ],
       },
     });
 
-    if (claimed.count !== 1) {
-      continue;
-    }
+  outboxPendingEvents.set(pendingCount);
 
+  const events = await claimPendingEvents();
+
+  for (const storedEvent of events) {
     const startedAt = process.hrtime.bigint();
 
     try {
@@ -74,7 +78,8 @@ async function processPendingEvents(): Promise<void> {
         case "task.created": {
           const event: ApplicationEvent<"task.created"> = {
             eventId: storedEvent.eventId,
-            timestamp: storedEvent.timestamp.toISOString(),
+            timestamp:
+              storedEvent.timestamp.toISOString(),
             type: "task.created",
             data:
               storedEvent.data as ApplicationEventMap["task.created"],
@@ -87,7 +92,8 @@ async function processPendingEvents(): Promise<void> {
         case "task.updated": {
           const event: ApplicationEvent<"task.updated"> = {
             eventId: storedEvent.eventId,
-            timestamp: storedEvent.timestamp.toISOString(),
+            timestamp:
+              storedEvent.timestamp.toISOString(),
             type: "task.updated",
             data:
               storedEvent.data as ApplicationEventMap["task.updated"],
@@ -100,7 +106,8 @@ async function processPendingEvents(): Promise<void> {
         case "task.deleted": {
           const event: ApplicationEvent<"task.deleted"> = {
             eventId: storedEvent.eventId,
-            timestamp: storedEvent.timestamp.toISOString(),
+            timestamp:
+              storedEvent.timestamp.toISOString(),
             type: "task.deleted",
             data:
               storedEvent.data as ApplicationEventMap["task.deleted"],
@@ -123,14 +130,16 @@ async function processPendingEvents(): Promise<void> {
         data: {
           status: "PROCESSED",
           processedAt: new Date(),
+          processingStartedAt: null,
           lastError: null,
           nextAttemptAt: null,
         },
       });
 
       const durationSeconds =
-        Number(process.hrtime.bigint() - startedAt) /
-        1_000_000_000;
+        Number(
+          process.hrtime.bigint() - startedAt,
+        ) / 1_000_000_000;
 
       outboxProcessingDuration.observe(
         {
@@ -151,40 +160,10 @@ async function processPendingEvents(): Promise<void> {
         "Outbox event processed",
       );
     } catch (error) {
-      if (storedEvent.attempts >= MAX_OUTBOX_ATTEMPTS) {
-        outboxFailedTotal.inc({
-          event_type: storedEvent.type,
-        });
-      
-        await prisma.applicationEvent.update({
-          where: {
-            id: storedEvent.id,
-          },
-          data: {
-            status: "DEAD_LETTER",
-            lastError:
-              error instanceof Error
-                ? error.message
-                : String(error),
-            nextAttemptAt: null,
-          },
-        });
-      
-        logger.error(
-          {
-            eventId: storedEvent.eventId,
-            eventType: storedEvent.type,
-            attempts: storedEvent.attempts,
-            error,
-          },
-          "Outbox event moved to dead letter",
-        );
-      
-        continue;
-      }
       const durationSeconds =
-        Number(process.hrtime.bigint() - startedAt) /
-        1_000_000_000;
+        Number(
+          process.hrtime.bigint() - startedAt,
+        ) / 1_000_000_000;
 
       outboxProcessingDuration.observe(
         {
@@ -197,38 +176,86 @@ async function processPendingEvents(): Promise<void> {
         event_type: storedEvent.type,
       });
 
+      const currentAttempt =
+        storedEvent.attempts + 1;
+
       logger.error(
         {
           eventId: storedEvent.eventId,
           eventType: storedEvent.type,
+          attempts: currentAttempt,
           error,
         },
         "Outbox event processing failed",
       );
 
-      const retryDelayMs =
-      Math.min(
+      if (
+        currentAttempt >=
+        MAX_OUTBOX_ATTEMPTS
+      ) {
+        await prisma.applicationEvent.update({
+          where: {
+            id: storedEvent.id,
+          },
+          data: {
+            status: "DEAD_LETTER",
+            processingStartedAt: null,
+            lastError:
+              error instanceof Error
+                ? error.message
+                : String(error),
+            nextAttemptAt: null,
+          },
+        });
+
+        logger.error(
+          {
+            eventId: storedEvent.eventId,
+            eventType: storedEvent.type,
+            attempts: currentAttempt,
+            error,
+          },
+          "Outbox event moved to dead letter",
+        );
+
+        continue;
+      }
+
+      const retryDelayMs = Math.min(
         30_000,
-        1_000 * 2 ** (storedEvent.attempts - 1),
+        1_000 *
+          2 ** (currentAttempt - 1),
       );
-    
-    const nextAttemptAt = new Date(
-      Date.now() + retryDelayMs,
-    );
-    
-    await prisma.applicationEvent.update({
-      where: {
-        id: storedEvent.id,
-      },
-      data: {
-        status: "PENDING",
-        lastError:
-          error instanceof Error
-            ? error.message
-            : String(error),
-        nextAttemptAt,
-      },
-    });
+
+      const nextAttemptAt = new Date(
+        Date.now() + retryDelayMs,
+      );
+
+      await prisma.applicationEvent.update({
+        where: {
+          id: storedEvent.id,
+        },
+        data: {
+          status: "PENDING",
+          processingStartedAt: null,
+          lastError:
+            error instanceof Error
+              ? error.message
+              : String(error),
+          nextAttemptAt,
+        },
+      });
+
+      logger.warn(
+        {
+          eventId: storedEvent.eventId,
+          eventType: storedEvent.type,
+          attempts: currentAttempt,
+          nextAttemptAt,
+          retryDelayMs,
+        },
+        "Outbox event scheduled for retry",
+      );
     }
   }
 }
@@ -243,13 +270,13 @@ export function startOutboxProcessor(): void {
   logger.info(
     {
       pollIntervalMs: POLL_INTERVAL_MS,
-      batchSize: BATCH_SIZE,
     },
     "Outbox processor started",
   );
 
   const poll = async () => {
     try {
+      await recoverStuckEvents();
       await processPendingEvents();
     } catch (error) {
       logger.error(

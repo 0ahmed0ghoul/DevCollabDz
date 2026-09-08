@@ -144,7 +144,8 @@ model ApplicationEvent {
   nextAttemptAt DateTime?
   processedAt   DateTime?
 
-  createdAt DateTime @default(now())
+  createdAt           DateTime  @default(now())
+  processingStartedAt DateTime?
 
   @@index([status])
   @@index([status, nextAttemptAt])
