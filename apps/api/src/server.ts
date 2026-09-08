@@ -11,7 +11,8 @@ import { registerProjectRooms } from "./realtime/project-rooms.js";
 import { setSocketServer } from "./realtime/socket-server.js";
 import { registerRealtimeEventHandlers } from "./realtime/realtime-event-handlers.js";
 import { registerAuditEventHandlers } from "./events/audit-event-handlers.js";
-import { startOutboxProcessor } from "./events/outbox-processor.js";
+import {  stopOutboxProcessor,
+} from "./events/outbox-processor.js";
 const PORT =
   process.env["PORT"] || 5000;
 
@@ -128,7 +129,6 @@ async function startServer() {
      * to handle application events
      * and dispatch them to clients.
      */
-    startOutboxProcessor();
 
 
     registerAuditEventHandlers();
@@ -212,6 +212,31 @@ async function startServer() {
         );
       },
     );
+
+    const shutdown = (signal: string) => {
+      logger.info(
+        { signal },
+        "Shutdown signal received",
+      );
+    
+      stopOutboxProcessor();
+    
+      httpServer.close(() => {
+        logger.info(
+          "HTTP server closed",
+        );
+    
+        process.exit(0);
+      });
+    };
+    
+    process.on("SIGINT", () => {
+      shutdown("SIGINT");
+    });
+    
+    process.on("SIGTERM", () => {
+      shutdown("SIGTERM");
+    });
   } catch (error) {
     logger.fatal(
       {
@@ -222,6 +247,9 @@ async function startServer() {
 
     process.exit(1);
   }
+
+  
 }
+
 
 void startServer();

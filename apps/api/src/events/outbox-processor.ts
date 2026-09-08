@@ -21,6 +21,7 @@ const MAX_OUTBOX_ATTEMPTS = 5;
 const PROCESSING_TIMEOUT_MS = 30_000;
 
 let processorRunning = false;
+let shutdownRequested = false;
 
 async function recoverStuckEvents(): Promise<void> {
   const cutoff = new Date(
@@ -260,12 +261,25 @@ async function processPendingEvents(): Promise<void> {
   }
 }
 
+export function stopOutboxProcessor(): void {
+  if (!processorRunning) {
+    return;
+  }
+
+  shutdownRequested = true;
+
+  logger.info(
+    "Outbox processor shutdown requested",
+  );
+}
+
 export function startOutboxProcessor(): void {
   if (processorRunning) {
     return;
   }
 
   processorRunning = true;
+  shutdownRequested = false;
 
   logger.info(
     {
@@ -283,11 +297,19 @@ export function startOutboxProcessor(): void {
         { error },
         "Outbox processor poll failed",
       );
-    } finally {
-      setTimeout(() => {
-        void poll();
-      }, POLL_INTERVAL_MS);
-    }
+    }finally {
+        if (!shutdownRequested) {
+          setTimeout(() => {
+            void poll();
+          }, POLL_INTERVAL_MS);
+        } else {
+          processorRunning = false;
+      
+          logger.info(
+            "Outbox processor stopped",
+          );
+        }
+      }
   };
 
   void poll();
