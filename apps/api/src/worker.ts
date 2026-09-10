@@ -1,12 +1,17 @@
 import "dotenv/config";
 
 import { logger } from "./utils/logger.js";
+
 import {
   startOutboxProcessor,
   stopOutboxProcessor,
 } from "./events/outbox-processor.js";
 
 startOutboxProcessor();
+
+logger.info(
+  "Outbox worker process started",
+);
 
 const shutdown = (signal: string) => {
   logger.info(
@@ -17,7 +22,10 @@ const shutdown = (signal: string) => {
   stopOutboxProcessor();
 
   setTimeout(() => {
-    logger.info("Worker stopped");
+    logger.info(
+      "Worker stopped",
+    );
+
     process.exit(0);
   }, 100);
 };

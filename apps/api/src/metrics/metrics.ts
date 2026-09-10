@@ -57,3 +57,13 @@ export const outboxProcessingDuration = new Histogram({
   labelNames: ["event_type"],
   registers: [metricsRegistry],
 });
+export const outboxWorkerAlive = new Gauge({
+  name: "devcollab_outbox_worker_alive",
+  help: "Whether the outbox worker is currently alive",
+  registers: [metricsRegistry],
+});
+export const outboxWorkerHeartbeat = new Gauge({
+  name: "devcollab_outbox_worker_heartbeat_timestamp",
+  help: "Unix timestamp of the last successful outbox worker heartbeat",
+  registers: [metricsRegistry],
+});

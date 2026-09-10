@@ -7,6 +7,8 @@ import {
   outboxProcessedTotal,
   outboxFailedTotal,
   outboxProcessingDuration,
+  outboxWorkerAlive,
+  outboxWorkerHeartbeat,
 } from "../metrics/metrics.js";
 
 import type {
@@ -267,6 +269,7 @@ export function stopOutboxProcessor(): void {
   }
 
   shutdownRequested = true;
+  outboxWorkerAlive.set(0);
 
   logger.info(
     "Outbox processor shutdown requested",
@@ -280,6 +283,7 @@ export function startOutboxProcessor(): void {
 
   processorRunning = true;
   shutdownRequested = false;
+  outboxWorkerAlive.set(1);
 
   logger.info(
     {
@@ -292,19 +296,24 @@ export function startOutboxProcessor(): void {
     try {
       await recoverStuckEvents();
       await processPendingEvents();
+  
+      outboxWorkerHeartbeat.set(
+        Math.floor(Date.now() / 1000),
+      );
     } catch (error) {
       logger.error(
         { error },
         "Outbox processor poll failed",
       );
-    }finally {
+    } finally  {
         if (!shutdownRequested) {
           setTimeout(() => {
             void poll();
           }, POLL_INTERVAL_MS);
         } else {
           processorRunning = false;
-      
+          outboxWorkerAlive.set(0);
+
           logger.info(
             "Outbox processor stopped",
           );
