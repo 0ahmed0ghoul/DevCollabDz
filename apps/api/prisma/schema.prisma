@@ -155,3 +155,14 @@ model ApplicationEvent {
   @@index([timestamp])
   @@index([createdAt])
 }
+
+model ProcessedEvent {
+  id          String   @id @default(cuid())
+  eventId     String
+  consumer    String
+  processedAt DateTime @default(now())
+
+  @@unique([eventId, consumer])
+  @@index([eventId])
+  @@index([consumer])
+}

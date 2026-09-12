@@ -30,18 +30,9 @@ async function startServer() {
         "Redis unavailable. Starting without cache.",
       );
     }
-
-    /*
-     * Create ONE HTTP server.
-     * Express and Socket.IO both use it.
-     */
     const httpServer =
       createServer(app);
 
-    /*
-     * Attach Socket.IO to the same
-     * HTTP server.
-     */
     const io = new Server(
       httpServer,
       {
@@ -54,9 +45,6 @@ async function startServer() {
       },
     );
 
-    /*
-     * Engine.IO diagnostics.
-     */
     io.engine.on(
       "connection_error",
       (error) => {
@@ -98,43 +86,18 @@ async function startServer() {
       },
     );
 
-    /*
-     * Socket.IO authentication.
-     */
     io.use(
       socketAuthMiddleware,
     );
 
-    /*
-     * Project room handlers.
-     */
     registerProjectRooms(io);
 
-    /*
-     * Make the Socket.IO server
-     * available to task services.
-     */
     setSocketServer(io);
 
-  /*  
-  Register event handlers for
-  application events that should
-  be dispatched to clients in
-  real-time.
-  */
     registerRealtimeEventHandlers();
 
-    /*
-     * Start the outbox processor
-     * to handle application events
-     * and dispatch them to clients.
-     */
-
-
     registerAuditEventHandlers();
-    /*
-     * Namespace connection diagnostics.
-     */
+
     io.on(
       "connection",
       (socket) => {
@@ -198,9 +161,6 @@ async function startServer() {
       },
     );
 
-    /*
-     * Start the HTTP server ONCE.
-     */
     httpServer.listen(
       PORT,
       () => {
