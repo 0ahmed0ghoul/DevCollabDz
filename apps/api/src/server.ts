@@ -11,6 +11,9 @@ import { registerProjectRooms } from "./realtime/project-rooms.js";
 import { setSocketServer } from "./realtime/socket-server.js";
 import { registerRealtimeEventHandlers } from "./realtime/realtime-event-handlers.js";
 import { registerAuditEventHandlers } from "./events/audit-event-handlers.js";
+import {
+  registerNotificationEventHandlers,
+} from "./modules/notifications/notification-event-handlers.js";
 import {  stopOutboxProcessor,
 } from "./events/outbox-processor.js";
 const PORT =
@@ -97,7 +100,7 @@ async function startServer() {
     registerRealtimeEventHandlers();
 
     registerAuditEventHandlers();
-
+    registerNotificationEventHandlers();
     io.on(
       "connection",
       (socket) => {

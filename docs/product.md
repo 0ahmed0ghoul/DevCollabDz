@@ -461,3 +461,21 @@ Day 21
 ✅ Metrics
 ✅ Crash recovery
 ✅ Failure isolation
+
+Day 23
+
+✅ Persistent idempotency record
+✅ Per-consumer idempotency
+✅ Atomic duplicate protection
+✅ Concurrent claim test
+✅ Event Bus duplicate-delivery test
+✅ TypeScript passes
+
+Day 24
+
+✅ Retry + exponential backoff
+✅ Maximum attempts
+✅ DEAD_LETTER
+✅ Retry/dead-letter metrics
+✅ Manual dead-letter recovery
+✅ DEAD_LETTER → PENDING → PROCESSED

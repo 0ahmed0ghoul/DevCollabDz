@@ -14,11 +14,16 @@ export interface ApplicationEventMap {
     task: unknown;
   };
 
-  "task.updated": {
-    projectId: string;
-    actorId: string;
-    task: unknown;
+"task.updated": {
+  projectId: string;
+  actorId: string;
+  task: unknown;
+
+  previous: {
+    status: string;
+    assigneeId: string | null;
   };
+};
 
   "task.deleted": {
     projectId: string;

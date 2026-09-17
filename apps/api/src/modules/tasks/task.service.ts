@@ -345,44 +345,79 @@ export async function getTask(taskId: string, userId: string) {
 export async function updateTask(
   taskId: string,
   userId: string,
-  input: UpdateTaskInput
+  input: UpdateTaskInput,
 ) {
-  const { task } = await getTaskWithAccess(taskId, userId);
+  const { task } = await getTaskWithAccess(
+    taskId,
+    userId,
+  );
 
-  if (input.assigneeId !== undefined && input.assigneeId !== null) {
-    const assignee = await prisma.projectMember.findUnique({
-      where: {
-        projectId_userId: {
-          projectId: task.project.id,
-          userId: input.assigneeId,
-        },
-      },
-    });
-
-    if (!assignee) {
-      throw new ForbiddenError("Assignee is not a member of this project");
-    }
-  }
-    const metadata = eventBus.createMetadata();
-    const result = await prisma.$transaction(async (tx) => {
-      const updatedTask = await tx.task.update({
+  if (
+    input.assigneeId !== undefined &&
+    input.assigneeId !== null
+  ) {
+    const assignee =
+      await prisma.projectMember.findUnique({
         where: {
-          id: taskId,
-        },
-    
-        data: input,
-    
-        include: {
-          assignee: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
+          projectId_userId: {
+            projectId: task.project.id,
+            userId: input.assigneeId,
           },
         },
       });
-    
+
+    if (!assignee) {
+      throw new ForbiddenError(
+        "Assignee is not a member of this project",
+      );
+    }
+  }
+
+  const metadata = eventBus.createMetadata();
+
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const existingTask =
+        await tx.task.findUnique({
+          where: {
+            id: taskId,
+          },
+          select: {
+            status: true,
+            assigneeId: true,
+          },
+        });
+
+      if (!existingTask) {
+        throw new NotFoundError(
+          "Task not found",
+        );
+      }
+
+      const previous = {
+        status: existingTask.status,
+        assigneeId: existingTask.assigneeId,
+      };
+
+      const updatedTask =
+        await tx.task.update({
+          where: {
+            id: taskId,
+          },
+
+          data: input,
+
+          include: {
+            assignee: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        });
+
       const event = {
         ...metadata,
         type: "task.updated" as const,
@@ -390,29 +425,36 @@ export async function updateTask(
           projectId: task.project.id,
           actorId: userId,
           task: updatedTask,
+          previous,
         },
       };
-    
+
       await persistApplicationEvent(
         {
           eventId: event.eventId,
           type: event.type,
-          timestamp: new Date(event.timestamp),
+          timestamp: new Date(
+            event.timestamp,
+          ),
           projectId: event.data.projectId,
           actorId: event.data.actorId,
           data: event.data,
         },
         tx,
       );
-    
+
       return {
         task: updatedTask,
         event,
       };
-    });
-    
-    await invalidateProjectTaskCache(task.project.id);    
-    return result.task;
+    },
+  );
+
+  await invalidateProjectTaskCache(
+    task.project.id,
+  );
+
+  return result.task;
 }
 
 export async function deleteTask(

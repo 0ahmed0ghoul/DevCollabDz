@@ -19,6 +19,7 @@ model User {
   projectMemberships ProjectMember[]
   projects           Project[]
   tasks              Task[]
+  notifications Notification[]
 }
 
 enum OrganizationRole {
@@ -165,4 +166,35 @@ model ProcessedEvent {
   @@unique([eventId, consumer])
   @@index([eventId])
   @@index([consumer])
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_STATUS_CHANGED
+  MENTION
+  TASK_COMMENT
+  PROJECT_MEMBER_ADDED
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  type        NotificationType
+
+  title       String
+  body        String
+  data        Json?
+
+  sourceEventId String
+
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceEventId, recipientId, type])
+  @@index([recipientId, readAt, createdAt])
+  @@index([recipientId, createdAt])
+  @@index([sourceEventId])
+  @@index([type])
 }
