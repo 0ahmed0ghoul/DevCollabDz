@@ -67,3 +67,23 @@ export const outboxWorkerHeartbeat = new Gauge({
   help: "Unix timestamp of the last successful outbox worker heartbeat",
   registers: [metricsRegistry],
 });
+export const outboxRetriesTotal = new Counter({
+  name: "devcollab_outbox_retries_total",
+  help: "Total number of outbox event retry attempts scheduled",
+  labelNames: ["event_type"],
+  registers: [metricsRegistry],
+});
+
+export const outboxDeadLetterTotal = new Counter({
+  name: "devcollab_outbox_dead_letter_total",
+  help: "Total number of outbox events moved to dead letter",
+  labelNames: ["event_type"],
+  registers: [metricsRegistry],
+});
+
+export const applicationEventsReplayedTotal = new Counter({
+  name: "devcollab_application_events_replayed_total",
+  help: "Total number of application events replayed",
+  labelNames: ["event_type"],
+  registers: [metricsRegistry],
+});

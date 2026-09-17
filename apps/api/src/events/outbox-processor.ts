@@ -9,6 +9,8 @@ import {
   outboxProcessingDuration,
   outboxWorkerAlive,
   outboxWorkerHeartbeat,
+  outboxRetriesTotal,
+outboxDeadLetterTotal,
 } from "../metrics/metrics.js";
 
 import type {
@@ -210,7 +212,9 @@ async function processPendingEvents(): Promise<void> {
             nextAttemptAt: null,
           },
         });
-
+        outboxDeadLetterTotal.inc({
+          event_type: storedEvent.type,
+        });
         logger.error(
           {
             eventId: storedEvent.eventId,
@@ -248,7 +252,9 @@ async function processPendingEvents(): Promise<void> {
           nextAttemptAt,
         },
       });
-
+      outboxRetriesTotal.inc({
+        event_type: storedEvent.type,
+      });
       logger.warn(
         {
           eventId: storedEvent.eventId,

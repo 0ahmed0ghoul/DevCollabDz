@@ -44,3 +44,25 @@ export async function claimPendingEvents() {
 
   return claimedEvents;
 }
+
+export async function requeueDeadLetterEvent(
+  eventId: string,
+): Promise<boolean> {
+  const result =
+    await prisma.applicationEvent.updateMany({
+      where: {
+        eventId,
+        status: "DEAD_LETTER",
+      },
+      data: {
+        status: "PENDING",
+        attempts: 0,
+        lastError: null,
+        nextAttemptAt: new Date(),
+        processedAt: null,
+        processingStartedAt: null,
+      },
+    });
+
+  return result.count === 1;
+}
