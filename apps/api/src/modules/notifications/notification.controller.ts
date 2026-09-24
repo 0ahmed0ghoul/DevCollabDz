@@ -9,39 +9,31 @@ export async function listNotificationsController(
   req: Request,
   res: Response,
 ) {
-  const userId = req.user.id;
+  const userId = req.userId;
 
-  const rawLimit = Number(
-    req.query.limit ?? 20,
-  );
+  if (!userId) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
 
-  const limit = Number.isFinite(rawLimit)
-    ? rawLimit
-    : 20;
+  const rawLimit = Number(req.query.limit ?? 20);
+  const limit = Number.isFinite(rawLimit) ? rawLimit : 20;
 
-  const notifications =
-    await getNotifications(
-      userId,
-      limit,
-    );
+  const notifications = await getNotifications(userId, limit);
 
-  return res.json({
-    notifications,
-  });
+  return res.json({ notifications });
 }
 
 export async function unreadNotificationCountController(
   req: Request,
   res: Response,
 ) {
-  const userId = req.user.id;
+  const userId = req.userId;
 
-  const count =
-    await getUnreadNotificationCount(
-      userId,
-    );
+  if (!userId) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
 
-  return res.json({
-    count,
-  });
+  const count = await getUnreadNotificationCount(userId);
+
+  return res.json({ count });
 }
