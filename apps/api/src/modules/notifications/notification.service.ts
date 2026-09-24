@@ -1,4 +1,10 @@
-import { createNotificationIfNew } from "./notification.store.js";
+import type { Prisma } from "../../generated/prisma/client.js";
+
+import {
+  createNotificationIfNew,
+  listNotifications,
+  countUnreadNotifications,
+} from "./notification.store.js";
 
 export async function createNotification(
   input: {
@@ -11,7 +17,7 @@ export async function createNotification(
       | "PROJECT_MEMBER_ADDED";
     title: string;
     body: string;
-    data?: Record<string, unknown>;
+    data?: Prisma.InputJsonValue;
     sourceEventId: string;
   },
 ): Promise<{
@@ -23,9 +29,25 @@ export async function createNotification(
     type: input.type,
     title: input.title,
     body: input.body,
-    data: input.data as
-      | Record<string, unknown>
-      | undefined,
+    data: input.data,
     sourceEventId: input.sourceEventId,
   });
+}
+
+export async function getNotifications(
+  recipientId: string,
+  limit?: number,
+) {
+  return listNotifications(
+    recipientId,
+    limit,
+  );
+}
+
+export async function getUnreadNotificationCount(
+  recipientId: string,
+): Promise<number> {
+  return countUnreadNotifications(
+    recipientId,
+  );
 }

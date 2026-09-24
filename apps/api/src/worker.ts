@@ -6,10 +6,14 @@ import {
   startOutboxProcessor,
   stopOutboxProcessor,
 } from "./events/outbox-processor.js";
+import { registerNotificationEventHandlers } from "./modules/notifications/notification-event-handlers.js";
 
 const METRICS_PORT = Number(process.env.WORKER_METRICS_PORT ?? 9465);
 
 const metricsServer = startWorkerMetricsServer(METRICS_PORT);
+
+registerNotificationEventHandlers();
+
 
 startOutboxProcessor();
 

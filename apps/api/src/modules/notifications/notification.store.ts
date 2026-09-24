@@ -53,3 +53,29 @@ export async function createNotificationIfNew(
     throw error;
   }
 }
+
+export async function listNotifications(
+  recipientId: string,
+  limit = 20,
+) {
+  return prisma.notification.findMany({
+    where: {
+      recipientId,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: Math.min(Math.max(limit, 1), 100),
+  });
+}
+
+export async function countUnreadNotifications(
+  recipientId: string,
+): Promise<number> {
+  return prisma.notification.count({
+    where: {
+      recipientId,
+      readAt: null,
+    },
+  });
+}

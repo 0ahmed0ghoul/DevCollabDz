@@ -5,7 +5,7 @@ import usersRoutes from "./modules/users/users.routes.js";
 import organizationRoutes from "./modules/organizations/organization.routes.js";
 import projectRoutes from "./modules/projects/project.router.js";
 import taskRoutes from "./modules/tasks/task.routes.js";
-
+import notificationRoutes from "./modules/notifications/notification.routes.js";
 import { notFoundMiddleware } from "./middleware/not-found.middleware.js";
 import {
   requestIdMiddleware,
@@ -75,6 +75,8 @@ app.get(
 
 app.use("/api", projectRoutes);
 app.use("/api", taskRoutes);
+app.use("/api/notifications", notificationRoutes);
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/organizations",organizationRoutes);
