@@ -94,7 +94,6 @@ async function startServer() {
     );
 
     registerProjectRooms(io);
-
     setSocketServer(io);
 
     registerRealtimeEventHandlers();
